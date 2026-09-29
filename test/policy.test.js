@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultSettings, settingsSchema, isExempt, localMatches, canManage } from '../src/policy.js';
-import { createJev } from '../src/jev.js';
+import { defaultSettings, settingsSchema, isExempt, localMatches, canManage } from '../packages/core/src/policy.ts';
+import { createJev } from '../packages/core/src/jev.ts';
 
 test('policy validates bounds and requires one of every rule', () => {
   const settings = defaultSettings();

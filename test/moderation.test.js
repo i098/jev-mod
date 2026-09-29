@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setImmediate } from 'node:timers/promises';
-import { createModerator, createQueue } from '../src/moderation.js';
-import { memoryStore } from '../src/demo-data.js';
-import { defaultSettings } from '../src/policy.js';
+import { createModerator, createQueue } from '../packages/core/src/moderation.js';
+import { memoryStore } from './fixtures.js';
+import { defaultSettings } from '../packages/core/src/policy.ts';
 
 const message = { id: 'msg', guildId: 'guild', channelId: 'channel', authorId: 'member', content: 'scam message', roleIds: [], mentionCount: 0 };
 const decision = { model: 'test', matches: [{ id: 'scams', name: 'Scams', probability: 0.95, action: 'delete' }] };

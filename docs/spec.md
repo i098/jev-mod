@@ -24,10 +24,12 @@ See [the source research](oss-moderation-research.md).
 
 ## Implementation
 
-Use Node.js ES modules, discord.js, Express, and MySQL 8.4.
-Serve a small browser dashboard from the same origin as its API.
-Use native browser controls and CSS rather than a separate frontend framework.
-MySQL stores settings, cases, audit records, and dashboard sessions.
+Use the user-approved Better-T-Stack selection: React, TanStack Router, DaisyUI, Hono on Workers, Better Auth, Drizzle, and Cloudflare D1.
+Use stable Effect 3 for typed model errors, request timeouts, and cleanup.
+Serve the built dashboard and API from the same Cloudflare Worker origin.
+Run discord.js in a Cloudflare Container with a private outbound handler for D1 access.
+D1 stores settings, cases, audit records, and dashboard sessions.
+Target the user's 42nights Cloudflare account; verify the account and Container credit eligibility before deployment.
 Use one bot process initially; do not run duplicate Gateway workers against the same bot.
 Bound in-flight Jev work, queued messages, and per-server request budgets.
 Keep the Jev key and Discord credentials on the server.
@@ -56,14 +58,17 @@ No automatic bans, billing, plugin marketplace, attachment scanning, or anti-rai
 
 ## Files and commands
 
-- `src/`: bot, web API, moderation, validation, authentication, and storage.
-- `public/`: dashboard HTML, JavaScript, and CSS.
+- `apps/bot/`: persistent Discord Gateway client and internal control endpoint.
+- `apps/server/`: Hono dashboard API, Worker entrypoint, and Container supervisor.
+- `apps/web/`: React dashboard routes and DaisyUI components.
+- `packages/`: shared moderation logic, types, database, and authentication.
 - `test/`: focused Node test runner checks.
-- `sql/schema.sql`: schema for a new database; operators apply it explicitly.
-- `npm start`: run the application.
-- `npm test`: run automated checks.
-- `npm run check`: check JavaScript syntax.
-- `npm run demo`: run a loopback-only preview with clearly marked sample data and no external actions.
+- `packages/db/migrations/`: checked-in D1 schema; operators apply remote migrations explicitly.
+- `pnpm dev:setup`: initialize the local preview database.
+- `pnpm dev`: run the loopback preview on ports 3102 and 7102.
+- `pnpm test`: execute behavior checks.
+- `pnpm check`: typecheck, build the website, and dry-run the Worker and Container build.
+- `pnpm deploy`: publish after account, database, domain, and secrets are configured.
 
 Use named functions, async/await, parameterized SQL, and small modules.
 For example, `await store.getSettings(guildId)` always requires an explicit server ID.

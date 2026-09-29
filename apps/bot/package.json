@@ -1,0 +1,9 @@
+{
+  "name": "@jev-mod/bot", "private": true, "type": "module",
+  "dependencies": {
+    "@jev-mod/core": "workspace:*",
+    "discord.js": "14.27.0",
+    "effect": "3.22.2",
+    "zod": "4.6.5"
+  }
+}

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Events } from 'discord.js';
-import { createDiscord } from '../src/discord.js';
-import { messageHash } from '../src/moderation.js';
+import { createDiscord } from '../apps/bot/src/discord.js';
+import { messageHash } from '../packages/core/src/moderation.js';
 
 function setup({ memberFailure = false, editDuringLookup = false, pauseDuringDelete = false, editDuringPolicy = false } = {}) {
   const adapter = createDiscord('not-a-live-token');

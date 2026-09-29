@@ -1,0 +1,7 @@
+# Wrangler reads .dev.vars for local live-mode testing.
+# The credential-free preview does not use this file.
+BETTER_AUTH_SECRET=
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+DISCORD_BOT_TOKEN=
+TYPESAFE_API_KEY=

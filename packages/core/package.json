@@ -1,0 +1,5 @@
+{
+  "name": "@jev-mod/core", "private": true, "type": "module",
+  "exports": { "./*": "./src/*" },
+  "dependencies": { "effect": "3.22.2", "zod": "4.6.5" }
+}

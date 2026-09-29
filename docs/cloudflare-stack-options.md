@@ -1,7 +1,14 @@
 # Jev-Mod: Cloudflare and Better-T-Stack options
 
 Checked on 2026-09-28 using current official documentation and npm registry metadata.
-This is an implementation recommendation, not proof of a deployed bot or of credit eligibility in the 42nights account.
+This records the research, not proof of a deployed bot or of credit eligibility in the 42nights account.
+
+## Selected implementation
+
+The user selected React with TanStack Router, DaisyUI, Hono on Workers, Better Auth, Drizzle, D1, Effect 3, and a discord.js Container.
+The Worker serves the built React assets and Hono API from one origin.
+The current generator emits prerelease Alchemy 2 and Effect 4 infrastructure; the implementation uses Wrangler so it can keep stable Effect 3 and explicit Container supervision.
+The alternative below remains research context, not the selected frontend.
 
 ## Recommendation
 
