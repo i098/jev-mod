@@ -10,7 +10,7 @@ Open-source Discord moderation, powered by TypeSafe Jev.
 ## Get started
 
 1. **Sign in** to the dashboard with Discord.
-2. **Add Jev-Mod** to a server you manage.
+2. **Add Jev-Mod** to a server where you have **Manage Server** permission.
 3. **Add your TypeSafe key** under Server settings → API key.
 4. **Set your rules**, test in Monitor only mode, then enable Protect server.
 
@@ -39,6 +39,17 @@ No bot token or hosting account needed for the hosted service.
 ### Cloudflare setup
 
 Follow the [operator guide](docs/guide.md#cloudflare-setup) for credentials, migrations, and deployment.
+
+## Website deployment
+
+The landing page is static HTML/CSS in `docs/`; `.nojekyll` disables Jekyll.
+
+1. Merge the site files into `main`.
+2. In [GitHub Pages settings](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), select **Deploy from a branch**, **main**, **/docs**, then **Save**.
+3. After deployment, verify the [public website](https://undeemed.github.io/jev-mod/), its images, favicon, links, and README rendering on GitHub.
+
+GitHub runs its own Pages deployment; no custom CI workflow is needed.
+Keep the dashboard on Cloudflare and its `PUBLIC_URL` unchanged.
 
 ## Local preview
 

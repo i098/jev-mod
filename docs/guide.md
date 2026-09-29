@@ -4,12 +4,12 @@
 
 ## Stack
 
-The website started from Better-T-Stack 3.44.2 with React, TanStack Router, Hono, Better Auth, Drizzle, and Cloudflare D1.
+The dashboard started from Better-T-Stack 3.44.2 with React, TanStack Router, Hono, Better Auth, Drizzle, and Cloudflare D1.
 DaisyUI provides controls and component styles while preserving the original dashboard navigation.
 Effect 3 handles typed Jev failures, interruptible request timeouts, and cleanup.
 The Discord Gateway connection uses discord.js in one bot process, supervised by Cloudflare Containers or Docker Compose.
 
-Both hosting options serve the built website and API on one origin.
+Both hosting options serve the built dashboard and API on one origin.
 Cloudflare uses a Worker, D1, and a Container with a private outbound store bridge.
 Docker Compose uses a Node server, persistent SQLite, and a separate bot container; no Cloudflare account is needed.
 Both use the same store operations, authentication, policies, and migrations.
@@ -18,6 +18,7 @@ Saved server TypeSafe keys stay encrypted in the database and are used only by t
 The generator currently emits prerelease Alchemy 2 and Effect 4 infrastructure.
 This project uses Wrangler for the Worker, D1, and Container definitions so application code remains on stable Effect 3 and Drizzle 0.45.
 The generated stack metadata remains in `bts.jsonc`.
+For the separate landing page, see [website deployment](../README.md#website-deployment).
 
 ## Local preview
 
@@ -181,7 +182,7 @@ pnpm check
 See [local verification](verification.md) for automated coverage, the separate browser fixture, recorded results, and live acceptance limits.
 `check` runs TypeScript checks, builds the website, and bundles the production Worker with a Wrangler dry run.
 These checks do not prove live Discord OAuth, model accuracy, Container recovery, or Cloudflare deployment.
-Local quality checks are configured for no-mistakes; no CI workflow is added.
+Local quality checks are configured for no-mistakes; the repository has no custom quality CI workflow.
 
 ## References
 
