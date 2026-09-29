@@ -9,13 +9,14 @@ See [the source research](oss-moderation-research.md).
 
 ## Product behavior
 
+Current administrator workflows, message handling, and enforcement limits are documented in [README](../README.md#moderation).
+
 - Discord login lists servers that the user can manage and provides an installation link.
 - Each server has separate rules, role and channel exceptions, cases, and settings.
 - Jev checks spam, scams, hate speech, harassment, threats, and sexual content, with editable instructions and thresholds.
 - Rules can log, delete, or delete and timeout a member.
 - Simple local rules check blocked phrases and excessive mentions.
 - New servers start in monitoring mode; an administrator enables enforcement in the dashboard.
-- New messages and text edits are evaluated; bot messages and direct messages are excluded.
 - The dashboard offers rules, a message tester, activity, case review, and server settings.
 - Settings use accessible tabs, searchable bounded exception selectors, phrase controls, and a shared timeout duration beside timeout actions.
 - Activity has server-side search and filters, cursor pagination, and a bounded scrolling case table.
@@ -39,8 +40,7 @@ D1 or SQLite stores settings, cases, audit records, encrypted server keys, and d
 Use one bot process initially; do not run duplicate Gateway workers against the same bot.
 Bound in-flight Jev work, queued messages, and per-server request budgets.
 Run classification in the website server so server-specific Jev keys never reach the bot or browser.
-Use the server's key when configured, otherwise the optional operator key; report a missing key without inventing a classification.
-Deterministic rules do not require a key or consume a model request.
+Key selection, missing-key behavior, and deterministic-only operation follow [the runtime contract](../README.md#runtime-and-data).
 
 ## Design
 
@@ -72,15 +72,11 @@ No automatic bans, billing, plugin marketplace, attachment scanning, or anti-rai
 - `apps/server/`: shared Hono dashboard API, Worker entrypoint, Container supervisor, and Node entrypoint.
 - `apps/web/`: React dashboard routes and DaisyUI components.
 - `packages/`: shared moderation logic, types, database, and authentication.
-- `test/`: focused Node test runner checks.
+- `test/`: focused Node checks and a separate browser fixture.
 - `packages/db/migrations/`: shared D1 and SQLite schema; operators apply remote D1 migrations explicitly.
 - `compose.yaml`: self-hosted server, bot profile, and persistent database volume.
-- `pnpm dev:setup`: initialize the local preview database.
-- `pnpm dev`: run the loopback preview on ports 3102 and 7102.
-- `pnpm test`: execute behavior checks.
-- `pnpm check`: typecheck, build the website, and dry-run the Worker and Container build.
-- `pnpm deploy`: publish after account, database, domain, and secrets are configured.
-- `node --env-file=.env apps/server/src/node.ts`: start the Node server after building the website and configuring a separate local database.
+
+Setup, deployment, and common commands are maintained in [README](../README.md).
 
 Use named functions, async/await, parameterized SQL, and small modules.
 For example, `await store.getSettings(guildId)` always requires an explicit server ID.

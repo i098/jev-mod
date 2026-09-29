@@ -90,8 +90,7 @@ These are recommendations derived from the comparison, not confirmed user requir
 
 Keep automatic bans, mass bans, anti-raid systems, member verification, image moderation, appeals, billing, and plugin support outside the first version unless requested.
 Prefer slash commands for essential moderator controls, following YAGPDB's current direction.
-The unresolved deployment choice is whether this serves only managed servers or supports public installation by any server owner.
-That choice changes onboarding and operation, but not the core rule-and-case workflow above.
+The selected installation scope is recorded in [the product objective](spec.md#objective).
 
 ## Evidence limits
 

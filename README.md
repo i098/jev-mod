@@ -14,7 +14,7 @@ Both hosting options serve the built website and API on one origin.
 Cloudflare uses a Worker, D1, and a Container with a private outbound store bridge.
 Docker Compose uses a Node server, persistent SQLite, and a separate bot container; no Cloudflare account is needed.
 Both use the same store operations, authentication, policies, and migrations.
-TypeSafe keys stay encrypted in the database and are used only by the server.
+Saved server TypeSafe keys stay encrypted in the database and are used only by the server.
 
 The generator currently emits prerelease Alchemy 2 and Effect 4 infrastructure.
 This project uses Wrangler for the Worker, D1, and Container definitions so application code remains on stable Effect 3 and Drizzle 0.45.
@@ -35,7 +35,9 @@ The API runs on port 7102.
 `dev:setup` applies schema only to the local preview database.
 The preview contains sample servers and cases, and stores configuration changes in local D1.
 It does not connect to Discord or Jev, and it cannot delete Discord messages.
-The message tester reports that no live model is connected rather than returning simulated classifications.
+The message tester rejects tests with enabled Jev rules rather than returning simulated classifications.
+To test blocked phrases and mention limits in preview, disable all Jev rules and save first.
+API key controls and Discord actions are disabled in preview.
 The preview entrypoint rejects non-loopback hosts and is separate from the production entrypoint.
 
 For a parallel checkout, set an unused `WEB_PORT` and `API_PORT` pair and update the preview `PUBLIC_URL` to match.
@@ -52,8 +54,28 @@ For a parallel checkout, set an unused `WEB_PORT` and `API_PORT` pair and update
 
 Jev only evaluates text.
 Image and attachment contents are not scanned.
+An attachment-only edit that changes Discord's message revision triggers another text evaluation.
 Automatic moderation excludes bot messages and direct messages.
 Jev decisions delete messages after Discord displays them; they do not intercept the original send.
+
+### Dashboard use
+
+- **Auto moderation** edits the mode, Jev instructions, thresholds, and actions.
+  Select **Save changes** before using **Test saved rules**; the tester ignores channel and role exceptions and never performs a Discord action.
+- **Server settings** has tabs for exceptions, content filters, actions/logs, the API key, and history.
+  Search exception options by name or ID; selected options remain available for removal when outside the search results.
+  Add blocked phrases individually and use **Limit mentions** to enable or disable the mention threshold.
+  Every **Delete + timeout** action uses the same timeout duration, editable beside timeout actions or in **Actions/logs**.
+- **Activity** searches stored message text and filters by outcome, rule, channel, and date.
+  Results scroll inside the case table; **Load older cases** continues the current search.
+  Open a reviewable case to dismiss it or request message deletion.
+
+Settings drafts survive navigation between views for the same server and Activity refreshes.
+Leaving that server or signing out asks whether to discard unsaved settings.
+API key changes use their own save and remove controls; successful changes clear the password field.
+Cases migrated without a recorded Discord revision remain visible but cannot delete messages through case review.
+
+### Enforcement limits
 
 The bot checks message contents, exemptions, and current settings before deletion.
 It checks policy again before a timeout and records partial failures separately.
@@ -123,11 +145,13 @@ Only the website server opens the SQLite database; bot requests use authenticate
 
 The initial worker is a single Gateway shard with bounded moderation work.
 Add explicit shard coordination before exceeding Discord's unsharded bot limits; do not increase `max_instances` and run duplicate clients.
-Jev work is capped at six concurrent calls in the bot, 60 queued submissions per server per minute, and 600 evaluations per minute across the account.
+The bot processes at most six messages concurrently and admits at most 60 submissions per server per minute.
+Server-side classification shares limits of 60 evaluations per server per minute and 600 across the deployment between the bot and dashboard tester.
 Overload and model failures leave messages unchanged.
-The dashboard tester has a separate ten-request user budget within the same global evaluation budget.
-Deterministic phrase and mention rules do not need a TypeSafe key or consume a model request.
-Each server administrator can save, replace, or remove a TypeSafe key in Settings.
+The dashboard tester also limits each user to ten tests per minute when Jev rules are enabled.
+For deterministic-only moderation, disable all Jev rules and save; phrase and mention checks then need no TypeSafe key or model request.
+If any Jev rule remains enabled, a classification failure prevents automatic action even when a local filter matches.
+Each server administrator can save, replace, or remove a TypeSafe key in **Server settings > API key**.
 Automatic moderation and the tester use that server key, then the optional operator key if no server key exists.
 The dashboard returns only key status, never saved plaintext.
 When no key is available, model classification reports an actionable error and leaves messages unchanged.
@@ -145,7 +169,7 @@ pnpm test
 pnpm check
 ```
 
-Tests exercise real local D1 behavior through Miniflare, HTTP authorization, CSRF, compare-and-set writes, audit triggers, retention boundaries, duplicate case claims, and Discord action regressions with a mocked transport.
+See [local verification](docs/verification.md) for automated coverage, the separate browser fixture, recorded results, and live acceptance limits.
 `check` runs TypeScript checks, builds the website, and bundles the production Worker with a Wrangler dry run.
 These checks do not prove live Discord OAuth, model accuracy, Container recovery, or Cloudflare deployment.
 Local quality checks are configured for no-mistakes; no CI workflow is added.
