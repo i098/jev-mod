@@ -86,7 +86,7 @@ pnpm test
 pnpm check
 ```
 
-[Report an issue](https://github.com/undeemed/jev-mod/issues) · [Verification guide](docs/verification.md) · [OSS research](docs/oss-moderation-research.md)
+[Contributing](CONTRIBUTING.md) · [Report an issue](https://github.com/undeemed/jev-mod/issues) · [Verification guide](docs/verification.md) · [OSS research](docs/oss-moderation-research.md)
 
 Keep keys, tokens, and private messages out of public reports.
 
