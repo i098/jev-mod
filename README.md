@@ -103,7 +103,8 @@ Jev decisions delete messages after Discord displays them; they do not intercept
   Open a reviewable case to dismiss it or request message deletion.
 
 Settings drafts survive navigation between views for the same server and Activity refreshes.
-Help icons explain settings on hover, keyboard focus, or tap; Escape dismisses the tooltip.
+Help icons explain settings and data sharing on hover, keyboard focus, click, or tap; Escape dismisses the tooltip.
+Select **Edit detection instructions** to open the editable text for a rule.
 Leaving that server or signing out asks whether to discard unsaved settings.
 API key changes use their own save and remove controls; successful changes clear the password field.
 Cases migrated without a recorded Discord revision remain visible but cannot delete messages through case review.
@@ -171,9 +172,13 @@ Verified public bots must obtain any required privileged-intent approval from Di
 
 The Container uses the stable name `gateway-v1` and runs a single Gateway client.
 It remains active while enabled, and a one-minute scheduled check starts it again after interruption.
-The internal health endpoint reports Discord readiness, not just HTTP availability.
-A Cloudflare deployment also reports Gateway readiness at `/healthz`: an enabled bot returns HTTP 503 until connected, then reports `bot: "connected"`.
-With `BOT_ENABLED=false`, that endpoint reports `bot: "disabled"` while the website remains available.
+The bot's internal health endpoint reports Gateway readiness.
+On Cloudflare, `/healthz` returns HTTP 200 with `bot: "connected"` only when the enabled bot is ready.
+Unavailable or invalid bot health responses return HTTP 503 with `bot: "unavailable"`.
+When `BOT_ENABLED` is not `true`, the endpoint returns HTTP 200 with `bot: "disabled"` without checking the bot.
+Cloudflare health responses use `Cache-Control: no-store` and do not expose provider errors.
+The portable Node `/healthz` checks HTTP liveness only and returns HTTP 200 with `status: "ok"`.
+Compose uses that check before starting the separate bot, whose health check verifies Gateway readiness.
 A watchdog exits after a prolonged disconnected state so supervision can restart the process.
 Persistent settings and cases live in D1 on Cloudflare or in the Compose database volume.
 Only the website server opens the SQLite database; bot requests use authenticated operation-based RPC.

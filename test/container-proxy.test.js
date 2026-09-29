@@ -44,6 +44,10 @@ test('Worker health reports Gateway readiness and fails closed on dependency err
           get() { return { async fetch(input) {
             if (new URL(input.url).pathname !== '/healthz') throw Error('Wrong endpoint');
             if (mode === 'disabled' || mode === 'error') throw Error('Synthetic dependency failure');
+            if (mode === 'bad-json') return new Response('Synthetic private provider details');
+            if (mode === 'null-json') return Response.json(null);
+            if (mode === 'string-connected') return Response.json({ connected: 'true' });
+            if (mode === 'non-ok') return Response.json({ connected: true }, { status: 503 });
             return Response.json({ connected: mode === 'connected' });
           } }; } };
         return worker.fetch(request, { BOT, BOT_ENABLED: mode === 'disabled' ? 'false' : 'true' });
@@ -52,7 +56,8 @@ test('Worker health reports Gateway readiness and fails closed on dependency err
   const runtime = new Miniflare({ modules: [{ type: 'ESModule', path: 'health.mjs', contents: bundle.outputFiles[0].text }],
     compatibilityDate: '2026-08-06', compatibilityFlags: ['nodejs_compat'] });
   t.after(() => runtime.dispose());
-  for (const [mode, status, bot] of [['disabled', 200, 'disabled'], ['connected', 200, 'connected'], ['starting', 503, 'unavailable'], ['error', 503, 'unavailable']]) {
+  for (const [mode, status, bot] of [['disabled', 200, 'disabled'], ['connected', 200, 'connected'],
+    ...['starting', 'error', 'bad-json', 'null-json', 'string-connected', 'non-ok'].map(mode => [mode, 503, 'unavailable'])]) {
     const response = await runtime.dispatchFetch('https://example.invalid/healthz', { headers: { 'x-bot-state': mode } });
     assert.equal(response.status, status);
     assert.equal(response.headers.get('cache-control'), 'no-store');

@@ -29,7 +29,8 @@ Discord and TypeSafe transports use test doubles.
 - [Keys, case filters, and migration compatibility](../test/keys-filtering.test.ts) run against both database adapters and cover encrypted server keys, shared tester/bot key selection, deterministic-only checks, paginated search, and preservation of older cases.
 - [Discord actions](../test/discord.test.js), [moderation](../test/moderation.test.js), and [bot lifecycle](../test/bot-lifecycle.test.js) cover current permissions, exemptions, changed revisions including attachment-only edits, duplicate claims, timeout safety, and membership reconciliation.
 - [Jev policy](../test/policy.test.js) includes a stalled-response-body regression that requires the original request signal to be aborted on timeout.
-- [Container proxy](../test/container-proxy.test.js) checks the private store bridge and rejects unrelated containers locally.
+- [Container proxy and Worker health](../test/container-proxy.test.js) check the private store bridge, reject unrelated containers, and cover disabled, connected, unavailable, and invalid health responses locally.
+- [Discord HTTP](../test/discord-http.test.ts) covers the identifying User-Agent, manageable-server filtering, safe failure messages, and status-only error logs with a synthetic transport.
 
 ## Browser fixture
 
@@ -56,7 +57,6 @@ This fixture needs no API server and does not use the preview database.
 
 Local Node, SQLite, and browser-fixture checks do not prove production Compose operation, live Discord installation or commands, permission revocation against Discord, or actual message enforcement.
 Before calling a deployment ready, check the real login and server-list flow, Gateway readiness, monitoring, and moderation in an authorized test server.
-The Cloudflare `/healthz` response reports `bot: "connected"` only after the Gateway is ready; an enabled but unavailable bot returns HTTP 503.
-The portable server's health endpoint checks its HTTP process, while its separate bot container health check verifies Gateway readiness.
+Interpret health results using [the runtime health contract](../README.md#runtime-and-data).
 Model classification quality, token refresh, permission revocation, idle recovery, and deployment rollback require their own observed checks.
 Deployment-specific results belong in the delivery record; do not infer them from a passing fixture or a successful asset upload.
