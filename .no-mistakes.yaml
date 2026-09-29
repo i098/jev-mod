@@ -1,0 +1,25 @@
+commands:
+  prepare: "pnpm install --frozen-lockfile"
+  test: "pnpm test"
+  lint: "pnpm check"
+no_ci: true
+auto_fix:
+  review: 3
+  test: 3
+  lint: 3
+document:
+  instructions: |
+    README.md owns setup and deployment instructions.
+    docs/ owns research, product decisions, and verification evidence.
+    Keep each Markdown sentence on one line.
+    Do not claim live Discord, Jev, or Cloudflare verification without credentials and observed results.
+test:
+  instructions: |
+    Execute behavior tests and build/type checks.
+    Keep checks local; this repository intentionally has no CI workflow.
+    The primary preview uses ports 3102 and 7102.
+    If starting another preview, first reserve an unused frontend/API pair and use that pair explicitly.
+    Do not modify live services, apply remote migrations, or contact real Discord users.
+providers:
+  github:
+    draft_pull_requests: true
