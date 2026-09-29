@@ -23,7 +23,7 @@ function Root() {
       let guilds = session.user && !installationCancelled ? await api<Guild[]>('/api/guilds', { signal: controller.signal }) : [];
       const selectedGuild = location.pathname.match(/^\/servers\/(\d{17,20})\//)?.[1];
       for (let attempt = 0; installed && session.user && attempt < 4
-        && !guilds.some(guild => guild.installed && (!selectedGuild || guild.id === selectedGuild)); attempt++) {
+        && !guilds.some(guild => guild.installed && guild.id === selectedGuild); attempt++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         if (controller.signal.aborted) return;
         guilds = await api<Guild[]>('/api/guilds', { signal: controller.signal });
