@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { Miniflare } from 'miniflare';
-import { createStore } from '../packages/db/src/index.ts';
+import { createDb, createStore } from '../packages/db/src/index.ts';
 import { defaultSettings } from '../packages/core/src/policy.ts';
 import { createDashboard, type BotApi, type Services, type User } from '../apps/server/src/app.ts';
 import { storeBridge } from '../apps/server/src/bridge.ts';
@@ -21,7 +21,7 @@ test('D1 and HTTP contracts enforce tenant isolation, CAS, audit atomicity, budg
   }
   // Miniflare supplies the same D1 wire contract with separately declared TS types.
   const db = binding as unknown as D1Database;
-  const store = createStore(db);
+  const store = createStore(createDb(db));
   const guild = '100000000000000001';
   const other = '100000000000000002';
   await store.registerGuild(guild); await store.registerGuild(other);
@@ -33,7 +33,7 @@ test('D1 and HTTP contracts enforce tenant isolation, CAS, audit atomicity, budg
   const budgets = await Promise.all(Array.from({ length: 5 }, () => store.consumeBudget('test-budget', 2)));
   assert.equal(budgets.filter(Boolean).length, 2);
   const item = { guildId: guild, channelId: '200000000000000001', messageId: '400000000000000001', authorId: '500000000000000001',
-    messageHash: 'a'.repeat(64), policyVersion: 1, content: 'test evidence', matches: [], model: 'test', requestedAction: 'delete', outcome: 'monitored' };
+    messageHash: 'a'.repeat(64), messageRevision: 'created', policyVersion: 1, content: 'test evidence', matches: [], model: 'test', requestedAction: 'delete', outcome: 'monitored' };
   const caseId = (await store.addCase(item))!;
   assert.equal(await store.addCase(item), null);
   assert.equal(await store.getCase(other, caseId), undefined);
@@ -48,6 +48,8 @@ test('D1 and HTTP contracts enforce tenant isolation, CAS, audit atomicity, budg
     async validateSettings() {}, async enforce() { return 'deleted'; }, async health() { return { connected: false }; },
   };
   const services: Services = { store, bot, origin: 'http://localhost:3102', clientId: guild, demo: false,
+    clientAddress: () => 'test', keyStatus: async () => ({ source: 'missing' }),
+    saveKey: async () => ({ source: 'server' }), removeKey: async () => ({ source: 'missing' }),
     user: async () => user, guilds: async () => [], auth: async () => new Response('{}'),
     classify: async () => ({ model: 'test', matches: [], scores: [] }) };
   const app = createDashboard(services);
@@ -70,7 +72,7 @@ test('D1 and HTTP contracts enforce tenant isolation, CAS, audit atomicity, budg
   assert.deepEqual(claims.sort(), [false, true]);
   await store.finishCase(guild, caseId, 'deleted_timeout_failed');
   assert.equal((await store.stats(guild)).removed, 1);
-  const invalidBridge = await storeBridge(new Request('http://jev.internal/store', { method: 'POST', body: JSON.stringify({ method: 'query', args: ['DROP TABLE guilds'] }) }), db);
+  const invalidBridge = await storeBridge(new Request('http://jev.internal/store', { method: 'POST', body: JSON.stringify({ method: 'query', args: ['DROP TABLE guilds'] }) }), store, services.classify);
   assert.equal(invalidBridge.status, 400);
   await binding.prepare('UPDATE moderation_cases SET created_at = ? WHERE id = ?').bind(Date.now() - 31 * 86400000, Number(caseId)).run();
   await store.cleanup();
@@ -88,7 +90,7 @@ test('D1 and HTTP contracts enforce tenant isolation, CAS, audit atomicity, budg
   ]) {
     const response = await app.request(`${path}/test`, { method: 'POST', headers, body: JSON.stringify({ content }) });
     assert.equal(response.status, 200);
-    assert.equal((await response.json()).action, action, content);
+    assert.equal(((await response.json()) as { action: string }).action, action, content);
   }
   await store.forgetGuild(guild);
   assert.equal((await store.listCases(guild)).length, 0);
@@ -105,6 +107,6 @@ test('D1 and HTTP contracts enforce tenant isolation, CAS, audit atomicity, budg
     services.guilds = async () => { throw failure; };
     const response = await app.request('/api/guilds');
     assert.equal(response.status, expectedStatus);
-    assert.equal(typeof (await response.json()).error, 'string');
+    assert.equal(typeof ((await response.json()) as { error: string }).error, 'string');
   }
 });

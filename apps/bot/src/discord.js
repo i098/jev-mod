@@ -1,7 +1,8 @@
-import { Client, Events, GatewayIntentBits, Partials, PermissionFlagsBits, ActivityType, Status } from 'discord.js';
+import { Client, Events, GatewayIntentBits, Partials, PermissionFlagsBits, ActivityType, Routes, Status } from 'discord.js';
 import { messageHash } from '@jev-mod/core/moderation.js';
 
 const MANAGE = PermissionFlagsBits.ManageGuild;
+const messageRevision = message => message.editedTimestamp == null ? 'created' : String(message.editedTimestamp);
 export function createDiscord(token) {
   const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -25,7 +26,6 @@ export function createDiscord(token) {
   return {
     client,
     ready,
-    installed: id => client.guilds.cache.has(id),
     async start() { await client.login(token); },
     async stop() { await client.destroy(); },
     onMessage(callback) {
@@ -39,19 +39,26 @@ export function createDiscord(token) {
     async snapshot(input) {
       const message = input.partial ? await input.fetch() : input;
       const member = await message.guild.members.fetch({ user: message.author.id, force: true });
-      return { id: message.id, guildId: message.guildId, channelId: message.channelId,
+      return { id: message.id, revision: messageRevision(message), guildId: message.guildId, channelId: message.channelId,
         parentId: message.channel.parentId, authorId: message.author.id, bot: message.author.bot,
         roleIds: [...member.roles.cache.keys()], content: message.content,
         mentionCount: message.mentions.users.size + message.mentions.roles.size + (message.mentions.everyone ? 1 : 0) };
     },
     async authorize(guildId, userId) {
-      const guild = await guildFor(guildId);
-      // Fetch current membership rather than trusting OAuth guild data cached in a browser.
-      let member;
-      try { member = await guild.members.fetch({ user: userId, force: true }); }
+      await guildFor(guildId);
+      let member, roles, guild;
+      try {
+        [member, roles, guild] = await Promise.all([
+          client.rest.get(Routes.guildMember(guildId, userId)),
+          client.rest.get(Routes.guildRoles(guildId)),
+          client.rest.get(Routes.guild(guildId)),
+        ]);
+      }
       catch { throw Object.assign(new Error('You cannot manage this server.'), { status: 403 }); }
       await guildFor(guildId);
-      if (guild.ownerId !== userId && !member.permissions.has(MANAGE)) {
+      const permissions = roles.filter(role => role.id === guildId || member.roles.includes(role.id))
+        .reduce((bits, role) => bits | BigInt(role.permissions), 0n);
+      if (guild.owner_id !== userId && (permissions & (MANAGE | PermissionFlagsBits.Administrator)) === 0n) {
         throw Object.assign(new Error('Manage Server permission is required.'), { status: 403 });
       }
     },
@@ -82,8 +89,8 @@ export function createDiscord(token) {
         }
       }
     },
-    /** @param {{guildId: string, channelId: string, messageId: string, hash: string, action: string, timeoutMinutes?: number, reason: string, exemptRoles?: string[], exemptChannels?: string[], isCurrent?: () => Promise<boolean>}} input */
-    async enforce({ guildId, channelId, messageId, hash, action, timeoutMinutes = 10, reason,
+    /** @param {{guildId: string, channelId: string, messageId: string, revision: string, hash: string, action: string, timeoutMinutes?: number, reason: string, exemptRoles?: string[], exemptChannels?: string[], isCurrent?: () => Promise<boolean>}} input */
+    async enforce({ guildId, channelId, messageId, revision, hash, action, timeoutMinutes = 10, reason,
       exemptRoles = [], exemptChannels = [], isCurrent = async () => true }) {
       const watch = { changed: false };
       const watchers = watching.get(messageId) ?? new Set();
@@ -96,7 +103,7 @@ export function createDiscord(token) {
       let message;
       try { message = await channel.messages.fetch({ message: messageId, force: true, cache: false }); }
       catch (error) { if (error.code === 10008) return 'already_gone'; throw error; }
-      if (messageHash(message.content) !== hash) return 'message_changed';
+      if (messageRevision(message) !== revision || messageHash(message.content) !== hash) return 'message_changed';
       let member;
       try { member = await guild.members.fetch({ user: message.author.id, force: true }); }
       catch { return 'member_check_failed'; }
@@ -105,7 +112,7 @@ export function createDiscord(token) {
       // Refresh after the member lookup; an earlier uncached snapshot does not track edits.
       try { message = await channel.messages.fetch({ message: messageId, force: true, cache: false }); }
       catch (error) { if (error.code === 10008) return 'already_gone'; throw error; }
-      if (messageHash(message.content) !== hash) return 'message_changed';
+      if (messageRevision(message) !== revision || messageHash(message.content) !== hash) return 'message_changed';
       if (!await isCurrent()) return 'policy_changed';
       if (watch.changed) return 'message_changed';
       if (!ready()) return 'delete_failed';

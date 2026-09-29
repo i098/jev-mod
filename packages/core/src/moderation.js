@@ -9,13 +9,13 @@ export function createModerator({ store, classify, discord, report = (_event, _g
     if (isExempt(message, settings) || !message.content.trim()) return;
     const local = localMatches(message, settings);
     let decision;
-    try { decision = await classify(message.content, settings.rules); }
+    try { decision = await classify(message.guildId, message.content, version); }
     catch { report('classification_failed', message.guildId); return; }
     const matches = [...local, ...decision.matches];
     if (!matches.length) return;
     const hash = messageHash(message.content);
     const requestedAction = strongestAction(matches);
-    const id = await store.addCase({ ...message, messageId: message.id, messageHash: hash,
+    const id = await store.addCase({ ...message, messageId: message.id, messageHash: hash, messageRevision: message.revision,
       policyVersion: version, matches, model: decision.model, requestedAction, outcome: 'pending' });
     if (!id) return;
 
@@ -28,7 +28,7 @@ export function createModerator({ store, classify, discord, report = (_event, _g
       else {
         try {
           outcome = await discord.enforce({ guildId: message.guildId, channelId: message.channelId,
-            messageId: message.id, hash, action: requestedAction, timeoutMinutes: settings.timeoutMinutes,
+            messageId: message.id, hash, revision: message.revision, action: requestedAction, timeoutMinutes: settings.timeoutMinutes,
             exemptRoles: current.settings.exemptRoles, exemptChannels: current.settings.exemptChannels,
             isCurrent: async () => {
               const latest = await store.getSettings(message.guildId);

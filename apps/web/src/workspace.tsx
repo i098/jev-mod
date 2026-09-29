@@ -74,7 +74,7 @@ export function Dashboard({ guildId, view }: { guildId: string; view: string }) 
       location.assign('/');
     } catch (error) { setToast((error as Error).message); setBusy(false); }
   }
-  return <div className="shell"><a className="skip" href="#main">Skip to content</a><aside className="sidebar"><Brand /><p className="brand-subtitle">Community, with boundaries.</p>
+  return <div className="shell"><a className="skip" href="#main">Skip to content</a><aside className="sidebar"><Brand />
     <div><label htmlFor="server" className="server-label">YOUR SERVER</label><select id="server" className="select server-select" aria-label="Select server" value={guildId} disabled={busy} onChange={event => {
       navigate({ to: '/servers/$guildId/$view', params: { guildId: event.target.value, view } });
     }}>{guilds.map(item => <option key={item.id} value={item.id}>{item.name}{item.installed ? '' : ' · Add bot'}</option>)}</select></div>
@@ -86,9 +86,12 @@ export function Dashboard({ guildId, view }: { guildId: string; view: string }) 
       <main id="main" className="content">{!guild?.installed ? <section className="empty"><h1>Add Jev-Mod to this server</h1><p>Install the bot, then refresh to configure moderation.</p>{guild?.inviteUrl && <a className="btn btn-primary" href={guild.inviteUrl}>Add to Discord</a>}<button className="btn" onClick={() => location.reload()}>Refresh servers</button></section>
         : error ? <section className="empty"><h1>Server could not load</h1><p role="alert">{error}</p><button className="btn" onClick={() => load().catch(error => setError(error.message))}>Try again</button></section>
         : !data || !draft ? <div className="center" aria-busy="true"><span className="loading loading-spinner loading-sm" />Loading server…</div>
-        : view === 'rules' ? <Rules draft={draft} update={setDraft} guildId={guildId} demo={session.demo} disabled={busy} />
-        : view === 'settings' ? <Settings data={data} draft={draft} update={setDraft} disabled={busy} />
+        : view === 'rules' ? <Rules draft={draft} update={setDraft} guildId={guildId} demo={session.demo} disabled={busy} keyStatus={data.keyStatus} />
+        : view === 'settings' ? <Settings data={data} draft={draft} update={setDraft} disabled={busy} guildId={guildId} keyStatusChanged={keyStatus => {
+          setData(previous => previous ? { ...previous, keyStatus } : previous);
+          void load().catch(error => { if (error.name !== 'AbortError') setToast(error.message); });
+        }} />
         : <Activity data={data} refresh={load} guildId={guildId} notify={setToast} />}</main>
-      {dirty && <footer className="savebar"><p>Unsaved changes<small>Apply to this server only.</small></p><div><button className="btn btn-ghost" disabled={busy} onClick={() => setDraft(structuredClone(data!.settings))}>Discard</button><button className="btn btn-primary" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button></div></footer>}</div>
+      {dirty && <footer className="savebar"><p>Unsaved changes</p><div><button className="btn btn-ghost" disabled={busy} onClick={() => setDraft(structuredClone(data!.settings))}>Discard</button><button className="btn btn-primary" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button></div></footer>}</div>
     {toast && <div className="toast toast-end" role="status"><div className="alert">{toast}</div></div>}</div>;
 }

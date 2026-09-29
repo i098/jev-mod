@@ -1,1 +1,0 @@
-{ "name": "@jev-mod/config", "private": true, "exports": { "./*": "./*" } }

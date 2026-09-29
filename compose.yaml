@@ -1,0 +1,52 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL:?Set PUBLIC_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?Set DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:?Set DISCORD_CLIENT_SECRET}
+      INTERNAL_RPC_SECRET: ${INTERNAL_RPC_SECRET:?Set INTERNAL_RPC_SECRET}
+      KEY_ENCRYPTION_SECRET: ${KEY_ENCRYPTION_SECRET:?Set KEY_ENCRYPTION_SECRET}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      BOT_ENABLED: ${BOT_ENABLED:-false}
+      BOT_RPC_URL: http://bot:8080/rpc
+      DATABASE_PATH: /app/data/jev-mod.sqlite
+      PORT: "7102"
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-7102}:7102"
+    volumes:
+      - database:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7102/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+  bot:
+    profiles: [bot]
+    build:
+      context: .
+      dockerfile: apps/bot/Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      PUBLIC_URL: ${PUBLIC_URL:?Set PUBLIC_URL}
+      INTERNAL_RPC_SECRET: ${INTERNAL_RPC_SECRET:?Set INTERNAL_RPC_SECRET}
+      STORE_URL: http://server:7102/internal/store
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/healthz').then(async r=>{if(!r.ok||!(await r.json()).connected)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+volumes:
+  database:

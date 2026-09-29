@@ -2,9 +2,10 @@
   "name": "jev-mod",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=24.17.0"
+    "node": ">=26.7.0"
   },
   "packageManager": "pnpm@10.33.2",
   "pnpm": { "overrides": { "@esbuild-kit/core-utils>esbuild": "0.25.12" } },
@@ -18,7 +19,8 @@
     "test": "tsx --test test/*.test.js test/*.test.ts",
     "db:generate": "drizzle-kit generate --config packages/db/drizzle.config.ts",
     "deploy": "pnpm build && wrangler deploy",
-    "bot": "node apps/bot/src/index.ts"
+    "bot": "node apps/bot/src/index.ts",
+    "server": "node apps/server/src/node.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260906.1",

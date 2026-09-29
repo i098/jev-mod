@@ -8,17 +8,18 @@ import { Client, Events, Status } from 'discord.js';
 test('startup reconciliation preserves concurrent guild joins and departures', { timeout: 10000 }, async t => {
   const previousEnv = { ...process.env };
   Object.assign(process.env, { DISCORD_BOT_TOKEN: 'offline-test-token-with-at-least-30-characters',
-    TYPESAFE_API_KEY: 'offline-test-key', PUBLIC_URL: 'http://localhost:3102', STORE_URL: 'http://jev.internal/store' });
+    INTERNAL_RPC_SECRET: 'synthetic-internal-secret-for-tests-only', PUBLIC_URL: 'http://localhost:3102', STORE_URL: 'http://server:7102/internal/store' });
   const guilds = new Set(['departing', 'stale']);
   const reading = Promise.withResolvers();
   const release = Promise.withResolvers();
   const initialized = Promise.withResolvers();
-  let client;
-  t.mock.method(http, 'createServer', () => ({ listen() {}, close() {} }));
+  let client, handleRequest;
+  t.mock.method(http, 'createServer', handler => { handleRequest = handler; return { listen() {}, close() {} }; });
   syncBuiltinESMExports();
   t.mock.method(Client.prototype, 'login', async function () { client = this; });
   t.mock.method(globalThis, 'fetch', async (url, options) => {
-    assert.equal(url, 'http://jev.internal/store');
+    assert.equal(url, 'http://server:7102/internal/store');
+    assert.equal(options.headers.Authorization, 'Bearer synthetic-internal-secret-for-tests-only');
     const { method, args } = JSON.parse(options.body);
     if (method === 'allGuilds') { reading.resolve(); await release.promise; }
     if (method === 'registerGuild') guilds.add(args[0]);
@@ -27,13 +28,15 @@ test('startup reconciliation preserves concurrent guild joins and departures', {
   });
   t.after(() => {
     process.emit('SIGTERM');
-    for (const key of ['DISCORD_BOT_TOKEN', 'TYPESAFE_API_KEY', 'PUBLIC_URL', 'STORE_URL']) {
+    for (const key of ['DISCORD_BOT_TOKEN', 'INTERNAL_RPC_SECRET', 'PUBLIC_URL', 'STORE_URL']) {
       if (previousEnv[key] === undefined) delete process.env[key]; else process.env[key] = previousEnv[key];
     }
     t.mock.restoreAll();
     syncBuiltinESMExports();
   });
   await import('../apps/bot/src/index.ts');
+  client.ws.status = Status.Ready;
+  client.ws.shards.set(0, { status: Status.Ready });
   client.guilds.cache.set('departing', { id: 'departing' });
   client.application = { commands: { create: async () => initialized.resolve() } };
   client.emit(Events.ClientReady, client);
@@ -47,6 +50,15 @@ test('startup reconciliation preserves concurrent guild joins and departures', {
   await initialized.promise;
   await setImmediate();
   assert.deepEqual([...guilds], ['joined']);
+  for (const authorization of [undefined, 'Bearer wrong', 'Bearer synthetic-internal-secret-for-tests-only']) {
+    const result = { status: 200, body: null };
+    const request = { url: '/rpc', method: 'POST', headers: { authorization },
+      async *[Symbol.asyncIterator]() { yield Buffer.from(JSON.stringify({ method: 'health', args: [] })); } };
+    const response = { setHeader() {}, writeHead(status) { result.status = status; return this; }, end(body) { result.body = JSON.parse(body); } };
+    await handleRequest(request, response);
+    assert.equal(result.status, authorization?.endsWith('tests-only') ? 200 : 401);
+    if (result.status === 200) assert.deepEqual(result.body, { result: { connected: true } });
+  }
 });
 
 for (const failure of ['registerGuild', 'forgetGuild', 'gatewayReidentified', 'gatewayDisconnected']) {
@@ -55,7 +67,7 @@ for (const failure of ['registerGuild', 'forgetGuild', 'gatewayReidentified', 'g
     const previousExitCode = process.exitCode;
     const previousSignals = new Map(['SIGTERM', 'SIGINT'].map(signal => [signal, new Set(process.listeners(signal))]));
     Object.assign(process.env, { DISCORD_BOT_TOKEN: 'offline-test-token-with-at-least-30-characters',
-      TYPESAFE_API_KEY: 'offline-test-key', PUBLIC_URL: 'http://localhost:3102', STORE_URL: 'http://jev.internal/store' });
+      PUBLIC_URL: 'http://localhost:3102', STORE_URL: 'http://jev.internal/store' });
     const initialized = Promise.withResolvers();
     const stopped = Promise.withResolvers();
     const writes = [];
@@ -76,7 +88,7 @@ for (const failure of ['registerGuild', 'forgetGuild', 'gatewayReidentified', 'g
     t.after(async () => {
       process.emit('SIGTERM');
       await stopped.promise;
-      for (const key of ['DISCORD_BOT_TOKEN', 'TYPESAFE_API_KEY', 'PUBLIC_URL', 'STORE_URL']) {
+      for (const key of ['DISCORD_BOT_TOKEN', 'PUBLIC_URL', 'STORE_URL']) {
         if (previousEnv[key] === undefined) delete process.env[key]; else process.env[key] = previousEnv[key];
       }
       process.exitCode = previousExitCode;

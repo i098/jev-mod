@@ -38,14 +38,12 @@ function Root() {
 }
 function Login({ inviteUrl }: { inviteUrl: string | null }) {
   const [error, setError] = useState('');
-  return <main className="login"><Brand /><div className="eyebrow">Your community. Your rules.</div><h1>Keep the conversation<br />worth having.</h1>
-    <p>Discord moderation that understands what a message means. Set your rules, test a message, and let Jev-Mod handle the noise.</p>
+  return <main className="login"><Brand /><h1>Moderation for your<br />Discord server.</h1>
     <button className="btn btn-primary" onClick={async () => {
       const result = await authClient.signIn.social({ provider: 'discord', callbackURL: location.origin });
       if (result.error) setError(result.error.message ?? 'Sign-in failed.');
     }}>Continue with Discord</button>{inviteUrl && <a className="btn btn-ghost" href={inviteUrl}>Add to Discord</a>}
     {error && <p role="alert" className="error">{error}</p>}
-    <ul><li>Separate rules and logs for every server</li><li>Start in monitoring mode, then enable enforcement</li><li>TypeSafe Jev for text moderation</li></ul>
     <p className="fine">Manage Server permission is required. Message text is sent to TypeSafe for evaluation. Flagged evidence is kept for 30 days.</p></main>;
 }
 function Index() {

@@ -5,6 +5,7 @@ import { z, ZodError } from 'zod';
 import { settingsSchema, snowflake, localMatches, strongestAction, canManage } from '@jev-mod/core/policy.ts';
 import type { Decision, GuildMetadata, Settings, SessionInfo } from './contracts.ts';
 import type { Store } from '@jev-mod/db/index.ts';
+import type { KeyStatus } from '@jev-mod/core/types.ts';
 
 export type User = { id: string; name: string; discordId: string; accessToken?: string };
 export type BotApi = {
@@ -18,11 +19,21 @@ export type Services = {
   store: Store; bot: BotApi; origin: string; clientId: string; demo: boolean;
   user(request: Request): Promise<User | null>;
   auth(request: Request): Promise<Response>;
-  classify(text: string, rules: Settings['rules']): Promise<Decision>;
-  guilds(user: User): Promise<{ id: string; name: string; installed: boolean }[]>;
+  classify(guildId: string, text: string, expectedVersion?: number): Promise<Decision>;
+  keyStatus(guildId: string): Promise<KeyStatus>;
+  saveKey(guildId: string, key: string, actorId: string): Promise<KeyStatus>;
+  removeKey(guildId: string, actorId: string): Promise<KeyStatus>;
+  clientAddress(request: Request): string;
+  guilds(user: User, request: Request): Promise<{ id: string; name: string; installed: boolean }[]>;
 };
 type Context = { Variables: { user: User; guildId: string } };
 const idSchema = z.string().regex(/^\d{1,16}$/);
+const caseQuery = z.object({ before: idSchema.optional(), search: z.string().trim().max(200).optional(),
+  outcome: z.enum(['review', 'removed', 'monitored', 'logged', 'pending', 'reviewing', 'deleted', 'delete_failed', 'deleted_timed_out',
+    'deleted_timeout_failed', 'deleted_timeout_skipped', 'dismissed', 'interrupted', 'policy_changed', 'message_changed', 'exempt', 'already_gone', 'member_check_failed', 'missing_permission']).optional(),
+  rule: z.enum(['scams', 'spam', 'hate', 'harassment', 'threats', 'sexual', 'phrases', 'mentions']).optional(), channel: snowflake.optional(),
+  from: z.coerce.number().int().min(0).max(8640000000000000).optional(), to: z.coerce.number().int().min(0).max(8640000000000000).optional(),
+}).strict().refine(query => query.from === undefined || query.to === undefined || query.from <= query.to);
 const problem = (message: string, status: number) => Object.assign(new Error(message), { status });
 
 export function createDashboard(services: Services) {
@@ -32,7 +43,7 @@ export function createDashboard(services: Services) {
   app.use('/api/*', bodyLimit({ maxSize: 65536, onError: c => c.json({ error: 'Request too large.' }, 413) }));
   app.use('/api/*', async (c, next) => {
     c.header('Cache-Control', 'no-store');
-    const address = c.req.header('cf-connecting-ip') ?? 'local';
+    const address = services.clientAddress(c.req.raw);
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(address));
     const key = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
     if (!await store.consumeBudget(`http:${key}`, 180)) return c.json({ error: 'Too many requests. Try again in a minute.' }, 429);
@@ -65,7 +76,7 @@ export function createDashboard(services: Services) {
     }
     await next();
   });
-  app.get('/api/guilds', async c => c.json((await services.guilds(c.get('user'))).map(guild => ({ ...guild, inviteUrl: invite(guild.id) }))));
+  app.get('/api/guilds', async c => c.json((await services.guilds(c.get('user'), c.req.raw)).map(guild => ({ ...guild, inviteUrl: invite(guild.id) }))));
   app.use('/api/guilds/:guildId/*', async (c, next) => {
     const id = snowflake.parse(c.req.param('guildId'));
     await bot.authorize(id, c.get('user').discordId);
@@ -75,10 +86,10 @@ export function createDashboard(services: Services) {
   // Hono's wildcard middleware includes both the base path and its descendants.
   app.get('/api/guilds/:guildId', async c => {
     const guildId = c.get('guildId');
-    const [policy, metadata, cases, stats, audit, health] = await Promise.all([
-      store.getSettings(guildId), bot.metadata(guildId), store.listCases(guildId), store.stats(guildId), store.audit(guildId), bot.health(),
+    const [policy, metadata, cases, stats, audit, health, keyStatus] = await Promise.all([
+      store.getSettings(guildId), bot.metadata(guildId), store.listCases(guildId), store.stats(guildId), store.audit(guildId), bot.health(), services.keyStatus(guildId),
     ]);
-    return c.json({ ...policy, metadata, cases, stats, audit, health, demo: services.demo });
+    return c.json({ ...policy, metadata, cases, stats, audit, health, keyStatus, demo: services.demo });
   });
   app.put('/api/guilds/:guildId/settings', async c => {
     const body = z.object({ settings: settingsSchema, version: z.number().int().nonnegative() }).strict().parse(await c.req.json());
@@ -86,18 +97,27 @@ export function createDashboard(services: Services) {
     return c.json(await store.saveSettings(c.get('guildId'), body.settings, body.version, c.get('user').discordId));
   });
   app.post('/api/guilds/:guildId/test', async c => {
-    if (!await store.consumeBudget(`tester:${c.get('user').id}`, 10)
-      || !await store.consumeBudget('jev:global', 600)) return c.json({ error: 'Message test limit reached.' }, 429);
     const { content } = z.object({ content: z.string().trim().min(1).max(4000) }).strict().parse(await c.req.json());
-    const { settings } = await store.getSettings(c.get('guildId'));
-    const result = await services.classify(content, settings.rules);
+    const { settings, version } = await store.getSettings(c.get('guildId'));
+    if (settings.rules.some(rule => rule.enabled) && !await store.consumeBudget(`tester:${c.get('user').id}`, 10)) return c.json({ error: 'Message test limit reached.' }, 429);
+    const result = await services.classify(c.get('guildId'), content, version);
     const mentions = new Set([...content.matchAll(/<@!?(\d{17,20})>|<@&(\d{17,20})>|@everyone|@here/g)]
       .map(([, user, role]) => user ? `user:${user}` : role ? `role:${role}` : 'everyone'));
     result.matches.push(...localMatches({ content, mentionCount: mentions.size }, settings));
     return c.json({ ...result, action: !result.matches.length || settings.mode === 'off' ? 'allow'
       : settings.mode === 'monitor' ? 'monitor' : strongestAction(result.matches) });
   });
-  app.get('/api/guilds/:guildId/cases', async c => c.json(await store.listCases(c.get('guildId'), c.req.query('before') ? idSchema.parse(c.req.query('before')) : undefined)));
+  app.get('/api/guilds/:guildId/key', async c => c.json(await services.keyStatus(c.get('guildId'))));
+  app.put('/api/guilds/:guildId/key', async c => {
+    if (services.demo) throw problem('API keys are disabled in preview.', 409);
+    const { key } = z.object({ key: z.string().trim().min(10).max(512) }).strict().parse(await c.req.json());
+    return c.json(await services.saveKey(c.get('guildId'), key, c.get('user').discordId));
+  });
+  app.delete('/api/guilds/:guildId/key', async c => {
+    if (services.demo) throw problem('API keys are disabled in preview.', 409);
+    return c.json(await services.removeKey(c.get('guildId'), c.get('user').discordId));
+  });
+  app.get('/api/guilds/:guildId/cases', async c => c.json(await store.listCases(c.get('guildId'), caseQuery.parse(c.req.query()))));
   app.post('/api/guilds/:guildId/cases/:caseId/review', async c => {
     const id = idSchema.parse(c.req.param('caseId'));
     const { action } = z.object({ action: z.enum(['dismiss', 'delete']) }).strict().parse(await c.req.json());
@@ -109,7 +129,7 @@ export function createDashboard(services: Services) {
     let outcome = 'dismissed';
     if (action === 'delete') {
       try { outcome = await bot.enforce({ guildId, channelId: item.channel_id, messageId: item.message_id,
-        hash: item.message_hash, action: 'delete', reason: `Jev-Mod case ${id}: moderator review` }); }
+        hash: item.message_hash, revision: item.message_revision, action: 'delete', reason: `Jev-Mod case ${id}: moderator review` }); }
       catch { outcome = 'delete_failed'; }
     }
     await store.finishCase(guildId, id, outcome, c.get('user').discordId);

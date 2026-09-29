@@ -2,6 +2,7 @@
   "name": "@jev-mod/server", "private": true, "type": "module",
   "dependencies": {
     "@cloudflare/containers": "0.3.7",
+    "@hono/node-server": "2.1.1",
     "@jev-mod/auth": "workspace:*",
     "@jev-mod/core": "workspace:*",
     "@jev-mod/db": "workspace:*",

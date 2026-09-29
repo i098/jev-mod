@@ -5,7 +5,7 @@ import { createModerator, createQueue } from '../packages/core/src/moderation.js
 import { memoryStore } from './fixtures.js';
 import { defaultSettings } from '../packages/core/src/policy.ts';
 
-const message = { id: 'msg', guildId: 'guild', channelId: 'channel', authorId: 'member', content: 'scam message', roleIds: [], mentionCount: 0 };
+const message = { id: 'msg', guildId: 'guild', channelId: 'channel', authorId: 'member', revision: 'created', content: 'scam message', roleIds: [], mentionCount: 0 };
 const decision = { model: 'test', matches: [{ id: 'scams', name: 'Scams', probability: 0.95, action: 'delete' }] };
 
 test('monitor records once; protect acts once; current content hash reaches the adapter', async () => {
@@ -51,5 +51,16 @@ test('bounded queue rejects excess work without exceeding worker concurrency', a
   assert.equal(calls, 1);
   release();
   await setImmediate();
+  assert.equal(calls, 2);
+});
+test('restoring flagged content in a new revision is moderated again', async () => {
+  const store = memoryStore();
+  await store.saveSettings('guild', { ...defaultSettings(), mode: 'protect' }, 0, 'admin');
+  let calls = 0;
+  const moderate = createModerator({ store, classify: async () => decision,
+    discord: { enforce: async request => { calls++; return request.revision === 'created' ? 'message_changed' : 'deleted'; } } });
+  assert.equal((await moderate(message)).outcome, 'message_changed');
+  assert.equal((await moderate({ ...message, revision: '1000' })).outcome, 'deleted');
+  assert.equal(await moderate({ ...message, revision: '1000' }), undefined);
   assert.equal(calls, 2);
 });

@@ -33,12 +33,12 @@ export type Settings = z.infer<typeof settingsSchema>;
 export type Rule = Settings['rules'][number];
 export type Match = { id: string; name: string; probability: number; action: Rule['action']; threshold?: number };
 export type MessageSnapshot = { id: string; guildId: string; channelId: string; parentId?: string | null;
-  authorId: string; bot?: boolean; roleIds: string[]; content: string; mentionCount: number };
+  authorId: string; revision: string; bot?: boolean; roleIds: string[]; content: string; mentionCount: number };
 
 export function defaultSettings(): Settings {
   return {
     mode: 'monitor',
-    rules: catalog.map(rule => ({ ...{ id: rule.id, enabled: true, threshold: 0.9, action: 'delete' }, instructions: rule.description })),
+    rules: catalog.map(rule => ({ id: rule.id, enabled: true, threshold: 0.9, action: 'delete', instructions: rule.description })),
     exemptChannels: [], exemptRoles: [], blockedPhrases: [], mentionLimit: 8,
     localAction: 'delete', timeoutMinutes: 10, logChannelId: '',
   };

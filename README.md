@@ -8,11 +8,13 @@ Each server has separate rules, exceptions, settings, and moderation cases.
 The website started from Better-T-Stack 3.44.2 with React, TanStack Router, Hono, Better Auth, Drizzle, and Cloudflare D1.
 DaisyUI provides controls and component styles while preserving the original dashboard navigation.
 Effect 3 handles typed Jev failures, interruptible request timeouts, and cleanup.
-The Discord Gateway connection uses discord.js in one Cloudflare Container.
+The Discord Gateway connection uses discord.js in one bot process, supervised by Cloudflare Containers or Docker Compose.
 
-The production Worker serves both the built website and API on one origin.
-The container accesses D1 through a private Cloudflare outbound handler.
-There is no public database bridge, separate MySQL host, or browser-side API key.
+Both hosting options serve the built website and API on one origin.
+Cloudflare uses a Worker, D1, and a Container with a private outbound store bridge.
+Docker Compose uses a Node server, persistent SQLite, and a separate bot container; no Cloudflare account is needed.
+Both use the same store operations, authentication, policies, and migrations.
+TypeSafe keys stay encrypted in the database and are used only by the server.
 
 The generator currently emits prerelease Alchemy 2 and Effect 4 infrastructure.
 This project uses Wrangler for the Worker, D1, and Container definitions so application code remains on stable Effect 3 and Drizzle 0.45.
@@ -37,7 +39,6 @@ The message tester reports that no live model is connected rather than returning
 The preview entrypoint rejects non-loopback hosts and is separate from the production entrypoint.
 
 For a parallel checkout, set an unused `WEB_PORT` and `API_PORT` pair and update the preview `PUBLIC_URL` to match.
-Ports 3102 and 7102 belong to this checkout; ports 3000 and 7030 are reserved elsewhere.
 
 ## Moderation
 
@@ -60,12 +61,19 @@ Discord has no conditional delete endpoint, so an edit or permission change in t
 Discord Gateway restarts can also leave gaps in message observation.
 Do not treat the bot as a guarantee that every unwanted message is blocked.
 
-## Production setup
+## Hosting
+
+For a normal VPS, follow [Docker Compose self-hosting](docs/self-hosting.md).
+The app still calls TypeSafe for classification; Jev does not run locally.
+The Node entrypoint requires Node 26.7.0 or later, matching the root package engine requirement.
+For a direct Node start after configuring `.env` and building the website, run `node --env-file=.env apps/server/src/node.ts`.
+This uses `data/jev-mod.sqlite` by default, separate from the D1 preview; set `PORT` and `DATABASE_PATH` explicitly when running another local instance.
+
+### Cloudflare setup
 
 No production resources or Discord application are created by installing dependencies or running checks.
-The deployment target is the user's 42nights Cloudflare account.
-Verify the account ID with `pnpm exec wrangler whoami` before creating resources.
-Credit coverage for Containers has not been verified; account credits are not automatically evidence of service eligibility.
+Use your own Cloudflare account and verify its ID with `pnpm exec wrangler whoami` before creating resources.
+Confirm Container availability and pricing for your account.
 
 1. Create a Discord application named **Jev-Mod** in the [Developer Portal](https://discord.com/developers/applications).
 2. Enable public bot installation and the **Message Content Intent**.
@@ -73,7 +81,7 @@ Credit coverage for Containers has not been verified; account credits are not au
 4. Create a D1 database in the intended Cloudflare account, then replace the placeholder `database_id` in `wrangler.jsonc`.
 5. Set `PUBLIC_URL` in `wrangler.jsonc` to the final HTTPS origin.
 6. Add `${PUBLIC_URL}/api/auth/callback/discord` as the Discord OAuth redirect URL.
-7. Supply the five Worker secrets below through Wrangler or the Cloudflare dashboard.
+7. Supply the Worker secrets below through Wrangler or the Cloudflare dashboard; the TypeSafe fallback is optional.
 8. Review and explicitly apply the D1 migrations to the new production database.
 9. Deploy with `BOT_ENABLED` still set to `false`, verify login and the account selection, then enable the bot and deploy again.
 10. Install Jev-Mod into a test server, verify monitoring, then opt into protection in the dashboard.
@@ -83,6 +91,8 @@ pnpm exec wrangler secret put BETTER_AUTH_SECRET
 pnpm exec wrangler secret put DISCORD_CLIENT_ID
 pnpm exec wrangler secret put DISCORD_CLIENT_SECRET
 pnpm exec wrangler secret put DISCORD_BOT_TOKEN
+pnpm exec wrangler secret put KEY_ENCRYPTION_SECRET
+# Optional operator fallback when a server has no saved key.
 pnpm exec wrangler secret put TYPESAFE_API_KEY
 
 # Explicit production schema action; inspect the account and SQL first.
@@ -91,7 +101,9 @@ pnpm exec wrangler d1 migrations apply DB --remote
 pnpm deploy
 ```
 
-Generate `BETTER_AUTH_SECRET` with `openssl rand -hex 32`.
+Generate distinct `BETTER_AUTH_SECRET` and `KEY_ENCRYPTION_SECRET` values with separate `openssl rand -hex 32` calls.
+`KEY_ENCRYPTION_SECRET` must contain exactly 64 hexadecimal characters.
+Back up the encryption secret separately from the database; losing it makes saved server keys unusable.
 Do not paste secrets into source files, issue bodies, or PR descriptions.
 `.dev.vars.example` documents the names for local live-mode testing.
 
@@ -106,13 +118,19 @@ The Container uses the stable name `gateway-v1` and runs a single Gateway client
 It remains active while enabled, and a one-minute scheduled check starts it again after interruption.
 The internal health endpoint reports Discord readiness, not just HTTP availability.
 A watchdog exits after a prolonged disconnected state so supervision can restart the process.
-Persistent settings and cases live in D1 rather than the container filesystem.
+Persistent settings and cases live in D1 on Cloudflare or in the Compose database volume.
+Only the website server opens the SQLite database; bot requests use authenticated operation-based RPC.
 
 The initial worker is a single Gateway shard with bounded moderation work.
 Add explicit shard coordination before exceeding Discord's unsharded bot limits; do not increase `max_instances` and run duplicate clients.
 Jev work is capped at six concurrent calls in the bot, 60 queued submissions per server per minute, and 600 evaluations per minute across the account.
 Overload and model failures leave messages unchanged.
 The dashboard tester has a separate ten-request user budget within the same global evaluation budget.
+Deterministic phrase and mention rules do not need a TypeSafe key or consume a model request.
+Each server administrator can save, replace, or remove a TypeSafe key in Settings.
+Automatic moderation and the tester use that server key, then the optional operator key if no server key exists.
+The dashboard returns only key status, never saved plaintext.
+When no key is available, model classification reports an actionable error and leaves messages unchanged.
 
 Only flagged-message text is stored.
 Cases and settings history expire after 30 days.
@@ -139,3 +157,9 @@ No reference-project source was copied.
 Zeppelin is source available under ELv2 and is used only as a behavior reference.
 
 API behavior follows the [TypeSafe API](https://docs.typesafe.ai/api), [Discord Gateway](https://docs.discord.com/developers/events/gateway), [Better Auth Discord guide](https://better-auth.com/docs/authentication/discord), and [Cloudflare Container binding guide](https://developers.cloudflare.com/containers/configuration/workers-connections/).
+
+## License
+
+Jev-Mod is available under the [MIT license](LICENSE).
+Retained Better-T-Stack template notices appear in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Dependency licenses remain with their respective packages.

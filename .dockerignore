@@ -1,4 +1,10 @@
 .git
+data
+backups
+.fallow
+.no-mistakes*
+.codegraph
+.tokensave
 node_modules
 **/node_modules
 .env

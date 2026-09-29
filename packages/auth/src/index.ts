@@ -1,14 +1,14 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
-import { createDb } from '@jev-mod/db/index.ts';
+import type { Database } from '@jev-mod/db/index.ts';
 import * as schema from '@jev-mod/db/schema/index.ts';
 
-export type AuthEnv = { DB: D1Database; PUBLIC_URL: string; BETTER_AUTH_SECRET: string;
+export type AuthEnv = { PUBLIC_URL: string; BETTER_AUTH_SECRET: string;
   DISCORD_CLIENT_ID: string; DISCORD_CLIENT_SECRET: string };
-export function createAuth(env: AuthEnv) {
+export function createAuth(env: AuthEnv, db: Database) {
   return betterAuth({
     appName: 'Jev-Mod', baseURL: env.PUBLIC_URL, secret: env.BETTER_AUTH_SECRET,
-    database: drizzleAdapter(createDb(env.DB), { provider: 'sqlite', schema }),
+    database: drizzleAdapter(db, { provider: 'sqlite', schema, transaction: false }),
     trustedOrigins: [env.PUBLIC_URL],
     session: { expiresIn: 3600, cookieCache: { enabled: false } },
     account: { encryptOAuthTokens: true, storeStateStrategy: 'database', accountLinking: { enabled: false } },

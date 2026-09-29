@@ -1,7 +1,7 @@
 # Jev-Mod: Cloudflare and Better-T-Stack options
 
 Checked on 2026-09-28 using current official documentation and npm registry metadata.
-This records the research, not proof of a deployed bot or of credit eligibility in the 42nights account.
+This records the research, not proof of a deployed bot or of credit eligibility in an operator's account.
 
 ## Selected implementation
 
@@ -9,6 +9,7 @@ The user selected React with TanStack Router, DaisyUI, Hono on Workers, Better A
 The Worker serves the built React assets and Hono API from one origin.
 The current generator emits prerelease Alchemy 2 and Effect 4 infrastructure; the implementation uses Wrangler so it can keep stable Effect 3 and explicit Container supervision.
 The alternative below remains research context, not the selected frontend.
+The project also supports the subsequently approved [Docker Compose host](self-hosting.md) without a Cloudflare account.
 
 ## Recommendation
 
@@ -137,7 +138,7 @@ An always-running bot does not receive scale-to-zero savings.
 
 The public startup program lists Workers, Durable Objects, D1, and several other eligible services, but does not explicitly list Containers in its coverage summary.
 That omission does not prove either eligibility or exclusion.
-The 42nights account's credit balance, expiry, service coverage, and paid-plan status were not accessed.
+The operator's account credit balance, expiry, service coverage, and paid-plan status were not accessed.
 Confirm those account facts before promising that credits cover the bot Container.
 Cloudflare states that credits cannot transfer between accounts.
 [Current startup program](https://www.cloudflare.com/startups/).

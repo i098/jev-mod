@@ -1,17 +1,19 @@
 import { createServer } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { Events, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import { z } from 'zod';
 import { createModerator, createQueue } from '@jev-mod/core/moderation.js';
-import { createJev } from '@jev-mod/core/jev.ts';
 import { snowflake, settingsSchema } from '@jev-mod/core/policy.ts';
-import type { NewCase, PolicyRecord } from '@jev-mod/core/types.ts';
+import type { Decision, NewCase, PolicyRecord } from '@jev-mod/core/types.ts';
 import { createDiscord } from './discord.js';
 
-const config = z.object({ DISCORD_BOT_TOKEN: z.string().min(30), TYPESAFE_API_KEY: z.string().min(10),
-  PUBLIC_URL: z.url(), STORE_URL: z.literal('http://jev.internal/store') }).parse(process.env);
+const config = z.object({ DISCORD_BOT_TOKEN: z.string().min(30), INTERNAL_RPC_SECRET: z.string().min(32).optional(),
+  PUBLIC_URL: z.url(), STORE_URL: z.enum(['http://jev.internal/store', 'http://server:7102/internal/store']) })
+  .refine(value => value.STORE_URL === 'http://jev.internal/store' || Boolean(value.INTERNAL_RPC_SECRET)).parse(process.env);
 async function rpc<T>(method: string, args: unknown[]): Promise<T> {
-  const response = await fetch(config.STORE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ method, args }), signal: AbortSignal.timeout(8000), redirect: 'error' });
+  const response = await fetch(config.STORE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json',
+    ...(config.INTERNAL_RPC_SECRET ? { Authorization: `Bearer ${config.INTERNAL_RPC_SECRET}` } : {}) },
+    body: JSON.stringify({ method, args }), signal: AbortSignal.timeout(method === 'classify' ? 12000 : 8000), redirect: 'error' });
   if (!response.ok) throw new Error('STORE_UNAVAILABLE');
   return ((await response.json()) as { result: T }).result;
 }
@@ -21,12 +23,8 @@ const store = {
   finishCase: (guild: string, id: string, outcome: string) => rpc('finishCase', [guild, id, outcome]),
 };
 const discord = createDiscord(config.DISCORD_BOT_TOKEN);
-const classify = createJev({ key: config.TYPESAFE_API_KEY });
 const report = (event: string, guildId: string) => console.warn(JSON.stringify({ event, guildId }));
-const moderate = createModerator({ store, discord, classify: async (...args: Parameters<typeof classify>) => {
-  if (!await rpc<boolean>('consumeBudget', ['jev:global', 600])) throw new Error('JEV_CAPACITY_LIMIT');
-  return classify(...args);
-}, report });
+const moderate = createModerator({ store, discord, classify: (guildId: string, content: string, version: number) => rpc<Decision>('classify', [guildId, content, version]), report });
 const enqueue = createQueue(async (message: unknown) => moderate(await discord.snapshot(message)), { onError: report });
 let initialized = false;
 let gatewayReady = false;
@@ -81,12 +79,17 @@ const inputSchema = z.discriminatedUnion('method', [
   z.object({ method: z.literal('metadata'), args: z.tuple([snowflake]) }),
   z.object({ method: z.literal('validateSettings'), args: z.tuple([snowflake, settingsSchema]) }),
   z.object({ method: z.literal('enforce'), args: z.tuple([z.object({ guildId: snowflake, channelId: snowflake, messageId: snowflake,
-    hash: z.string().length(64), action: z.literal('delete'), reason: z.string().max(500) })]) }),
+    hash: z.string().length(64), revision: z.string().min(1).max(64), action: z.literal('delete'), reason: z.string().max(500) })]) }),
 ]);
 const server = createServer(async (request, response) => {
   response.setHeader('Content-Type', 'application/json');
   if (request.url === '/healthz') { response.end(JSON.stringify({ connected: initialized && discord.ready() })); return; }
   if (request.url !== '/rpc' || request.method !== 'POST') { response.writeHead(404).end('{}'); return; }
+  if (config.INTERNAL_RPC_SECRET) {
+    const supplied = Buffer.from(request.headers.authorization ?? '');
+    const expected = Buffer.from(`Bearer ${config.INTERNAL_RPC_SECRET}`);
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) { response.writeHead(401).end('{}'); return; }
+  }
   try {
     if (!initialized) { response.writeHead(503).end('{}'); return; }
     const chunks: Buffer[] = [];
