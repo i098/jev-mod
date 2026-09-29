@@ -53,7 +53,14 @@ function botApi(env: Env): BotApi {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const path = new URL(request.url).pathname;
+    const url = new URL(request.url);
+    if (url.hostname.endsWith('.workers.dev') && url.origin !== new URL(env.PUBLIC_URL).origin) {
+      const canonical = new URL(env.PUBLIC_URL);
+      url.protocol = canonical.protocol;
+      url.host = canonical.host;
+      return new Response(null, { status: 307, headers: { Location: url.toString(), 'Cache-Control': 'no-store' } });
+    }
+    const path = url.pathname;
     if (path === '/healthz') {
       const headers = { 'Cache-Control': 'no-store' };
       if (env.BOT_ENABLED !== 'true') return Response.json({ status: 'ok', bot: 'disabled' }, { headers });

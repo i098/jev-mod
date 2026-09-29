@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://jevmod.us/sitemap.xml

@@ -95,7 +95,7 @@ test('Worker health reports Gateway readiness and fails closed on dependency err
             if (mode === 'non-ok') return Response.json({ connected: true }, { status: 503 });
             return Response.json({ connected: mode === 'connected' });
           } }; } };
-        return worker.fetch(request, { BOT, BOT_ENABLED: mode === 'disabled' ? 'false' : 'true' });
+        return worker.fetch(request, { BOT, BOT_ENABLED: mode === 'disabled' ? 'false' : 'true', PUBLIC_URL: 'https://app.example.com' });
       } };
     ` } });
   const runtime = new Miniflare({ modules: [{ type: 'ESModule', path: 'health.mjs', contents: bundle.outputFiles[0].text }],
@@ -107,5 +107,11 @@ test('Worker health reports Gateway readiness and fails closed on dependency err
     assert.equal(response.status, status);
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.deepEqual(await response.json(), { status: status === 200 ? 'ok' : 'not_ready', bot });
+  }
+  for (const method of ['GET', 'POST']) {
+    const response = await runtime.dispatchFetch('https://old.workers.dev/api/auth/callback/discord?code=synthetic&state=synthetic', { method, redirect: 'manual' });
+    assert.equal(response.status, 307);
+    assert.equal(response.headers.get('location'), 'https://app.example.com/api/auth/callback/discord?code=synthetic&state=synthetic');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
   }
 });

@@ -1,6 +1,6 @@
 # Jev-Mod setup and operations
 
-[Project overview](../README.md) · [Hosted dashboard](https://jev-mod.jerry-2c0.workers.dev) · [Docker self-hosting](self-hosting.md)
+[Project overview](../README.md) · [Hosted dashboard](https://app.jevmod.us) · [Docker self-hosting](self-hosting.md)
 
 ## Stack
 
