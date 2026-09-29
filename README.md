@@ -1,7 +1,37 @@
-# Jev-Mod
+# Jev-Mod: open-source Discord moderation bot
 
-A public-install Discord moderation bot with a configuration dashboard and TypeSafe Jev text classification.
-Each server has separate rules, exceptions, settings, and moderation cases.
+Jev-Mod is an open-source Discord moderation bot with AI message filtering, configurable rules, and a web dashboard.
+Detect spam, phishing, harassment, and other unwanted text with TypeSafe Jev, then log matches, delete messages, or apply a timeout.
+Use the hosted bot or self-host the dashboard and bot on Cloudflare or Docker Compose under the MIT license.
+
+[Open dashboard](https://jev-mod.jerry-2c0.workers.dev) · [Add Jev-Mod to Discord](https://discord.com/oauth2/authorize?client_id=1554338188708020294) · [Self-host with Docker](docs/self-hosting.md) · [Cloudflare setup](#cloudflare-setup) · [MIT license](LICENSE)
+
+## Add Jev-Mod to your Discord server
+
+1. Open the dashboard and sign in with Discord.
+2. Select a server where you have **Manage Server** permission, then add Jev-Mod.
+3. Open **Server settings > API key** and save your TypeSafe API key for AI moderation.
+4. Configure message rules, channel and role exceptions, blocked phrases, and mention limits.
+5. Test saved rules in **Monitor only** mode, then switch to **Protect server** when ready.
+
+Hosted users do not need a Cloudflare account, bot token, or Discord developer application.
+Those credentials belong to the operator of the shared service.
+Each Discord server has separate rules, encrypted API-key storage, and moderation cases.
+For moderation without a TypeSafe key, disable the Jev rules and use local phrase and mention checks.
+
+![Jev-Mod Discord moderation dashboard with searchable case history, rule filters, and moderation outcomes](docs/images/dashboard.png)
+
+Dashboard preview with sample data.
+
+## Self-hosting options
+
+| Hosting | Website and API | Discord bot | Database |
+| --- | --- | --- | --- |
+| [Cloudflare](#cloudflare-setup) | Worker and static assets | Cloudflare Container | D1 |
+| [Docker Compose](docs/self-hosting.md) | Node server | Separate bot container | Persistent SQLite |
+
+Self-hosting uses your own Discord application and credentials.
+Jev classification calls the TypeSafe API; the model does not run locally.
 
 ## Stack
 
@@ -25,6 +55,8 @@ The generated stack metadata remains in `bts.jsonc`.
 Use Node.js 26.7 or later and pnpm 10.33.2.
 
 ```sh
+git clone https://github.com/undeemed/jev-mod.git
+cd jev-mod
 pnpm install --frozen-lockfile
 pnpm dev:setup
 pnpm dev
@@ -71,6 +103,8 @@ Jev decisions delete messages after Discord displays them; they do not intercept
   Open a reviewable case to dismiss it or request message deletion.
 
 Settings drafts survive navigation between views for the same server and Activity refreshes.
+Help icons explain settings and data sharing on hover, keyboard focus, click, or tap; Escape dismisses the tooltip.
+Select **Edit detection instructions** to open the editable text for a rule.
 Leaving that server or signing out asks whether to discard unsaved settings.
 API key changes use their own save and remove controls; successful changes clear the password field.
 Cases migrated without a recorded Discord revision remain visible but cannot delete messages through case review.
@@ -138,7 +172,13 @@ Verified public bots must obtain any required privileged-intent approval from Di
 
 The Container uses the stable name `gateway-v1` and runs a single Gateway client.
 It remains active while enabled, and a one-minute scheduled check starts it again after interruption.
-The internal health endpoint reports Discord readiness, not just HTTP availability.
+The bot's internal health endpoint reports Gateway readiness.
+On Cloudflare, `/healthz` returns HTTP 200 with `bot: "connected"` only when the enabled bot is ready.
+Unavailable or invalid bot health responses return HTTP 503 with `bot: "unavailable"`.
+When `BOT_ENABLED` is not `true`, the endpoint returns HTTP 200 with `bot: "disabled"` without checking the bot.
+Cloudflare health responses use `Cache-Control: no-store` and do not expose provider errors.
+The portable Node `/healthz` checks HTTP liveness only and returns HTTP 200 with `status: "ok"`.
+Compose uses that check before starting the separate bot, whose health check verifies Gateway readiness.
 A watchdog exits after a prolonged disconnected state so supervision can restart the process.
 Persistent settings and cases live in D1 on Cloudflare or in the Compose database volume.
 Only the website server opens the SQLite database; bot requests use authenticated operation-based RPC.
@@ -187,3 +227,9 @@ API behavior follows the [TypeSafe API](https://docs.typesafe.ai/api), [Discord 
 Jev-Mod is available under the [MIT license](LICENSE).
 Retained Better-T-Stack template notices appear in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 Dependency licenses remain with their respective packages.
+
+## Support and contributions
+
+[Report bugs or request features](https://github.com/undeemed/jev-mod/issues).
+Include reproduction steps and your hosting option; keep API keys, OAuth tokens, and private Discord messages out of public reports.
+For code changes, run `pnpm test` and `pnpm check` before opening a pull request.

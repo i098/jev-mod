@@ -29,13 +29,15 @@ Discord and TypeSafe transports use test doubles.
 - [Keys, case filters, and migration compatibility](../test/keys-filtering.test.ts) run against both database adapters and cover encrypted server keys, shared tester/bot key selection, deterministic-only checks, paginated search, and preservation of older cases.
 - [Discord actions](../test/discord.test.js), [moderation](../test/moderation.test.js), and [bot lifecycle](../test/bot-lifecycle.test.js) cover current permissions, exemptions, changed revisions including attachment-only edits, duplicate claims, timeout safety, and membership reconciliation.
 - [Jev policy](../test/policy.test.js) includes a stalled-response-body regression that requires the original request signal to be aborted on timeout.
-- [Container proxy](../test/container-proxy.test.js) checks the private store bridge and rejects unrelated containers locally.
+- [Container proxy and Worker health](../test/container-proxy.test.js) check the private store bridge, reject unrelated containers, and cover disabled, connected, unavailable, and invalid health responses locally.
+- [Discord HTTP](../test/discord-http.test.ts) covers the identifying User-Agent, manageable-server filtering, safe failure messages, and status-only error logs with a synthetic transport.
 
 ## Browser fixture
 
 [The browser fixture](../test/dashboard.browser.ts) renders the real React dashboard with sample servers, cases, and keys.
 It replaces `fetch` and `confirm`, so it does not exercise live providers or browser-native confirmation dialogs.
-Coverage includes thousands of exception options, keyboard tabs, phrase and mention controls, shared timeout duration, key save/replace/remove, paginated search, stale-response cancellation, draft preservation, sign-out errors, and canceled or confirmed server switches.
+Coverage includes thousands of exception options, keyboard tabs, explanatory tooltips, phrase and mention controls, shared timeout duration, key save/replace/remove, paginated search, stale-response cancellation, draft preservation, sign-out errors, and canceled or confirmed server switches.
+Tooltip checks cover focus and click opening, Escape dismissal, viewport bounds, and keeping help open during focus-induced scrolling.
 It is separate from `pnpm test`.
 
 Choose an unused `WEB_PORT` and `API_PORT` pair before starting it from the repository root.
@@ -51,12 +53,10 @@ Repeat at desktop and narrow widths; check clipping and document overflow separa
 Serve the repository root as shown, rather than an `/@fs` HTML URL through the app-root server, so Vite supplies the React preamble.
 This fixture needs no API server and does not use the preview database.
 
-## Not verified live
-
-No real Discord or Jev credentials were used.
-No real messages were read, sent, deleted, or timed out.
-No production D1 database, Worker, or Container was deployed.
-Cloudflare account access was inspected, but Container credit eligibility was not confirmed.
-Model classification quality, OAuth provider behavior, idle recovery, and deployment rollout remain live acceptance checks.
+## Live acceptance checks
 
 Local Node, SQLite, and browser-fixture checks do not prove production Compose operation, live Discord installation or commands, permission revocation against Discord, or actual message enforcement.
+Before calling a deployment ready, check the real login and server-list flow, Gateway readiness, monitoring, and moderation in an authorized test server.
+Interpret health results using [the runtime health contract](../README.md#runtime-and-data).
+Model classification quality, token refresh, permission revocation, idle recovery, and deployment rollback require their own observed checks.
+Deployment-specific results belong in the delivery record; do not infer them from a passing fixture or a successful asset upload.

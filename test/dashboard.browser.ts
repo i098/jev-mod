@@ -152,6 +152,19 @@ async function run() {
     return;
   }
   await until(() => document.querySelector('h1')?.textContent === 'Server settings');
+  const help = namedButton('How exceptions work');
+  help.focus(); await settle();
+  const tooltip = document.getElementById(help.getAttribute('aria-describedby')!)!;
+  assert(tooltip.matches(':popover-open') && tooltip.getAttribute('role') === 'tooltip', 'Explanations open as tooltips on keyboard focus');
+  window.dispatchEvent(new Event('scroll')); await settle();
+  assert(tooltip.matches(':popover-open'), 'Focus-induced scrolling must not immediately close help');
+  const tooltipBounds = tooltip.getBoundingClientRect();
+  assert(tooltipBounds.left >= 0 && tooltipBounds.right <= innerWidth && tooltipBounds.top >= 0 && tooltipBounds.bottom <= innerHeight, 'Tooltip stays within viewport');
+  help.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await settle();
+  assert(!tooltip.matches(':popover-open'), 'Escape dismisses help');
+  help.blur(); help.click(); await settle();
+  assert(tooltip.matches(':popover-open'), 'Click and touch can open explanations');
+  help.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   assert(document.querySelectorAll('.check-list input').length === 80, 'Thousands of sample options must render at most 40 per selector');
   namedButton(`Remove ${missingChannel}`).click(); await settle();
   namedButton(`Remove ${missingRole}`).click(); await settle();

@@ -152,8 +152,11 @@ export async function listDiscordGuilds(accessToken: string) {
   let after = '0';
   for (let page = 0; page < 5; page++) {
     const response = await fetch(`https://discord.com/api/v10/users/@me/guilds?limit=200&after=${after}`, {
-      headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8000), redirect: 'error' });
-    if (!response.ok) throw problem('Discord is unavailable. Sign in again or try shortly.', response.status === 401 ? 401 : 503);
+      headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'DiscordBot (https://github.com/undeemed/jev-mod, 0.1.0)' }, signal: AbortSignal.timeout(8000), redirect: 'error' });
+    if (!response.ok) {
+      console.warn(JSON.stringify({ event: 'discord_guilds_failed', status: response.status }));
+      throw problem('Discord is unavailable. Sign in again or try shortly.', response.status === 401 ? 401 : 503);
+    }
     const batch = z.array(z.object({ id: snowflake, name: z.string(), permissions: z.string(), owner: z.boolean().optional() })).parse(await response.json());
     guilds.push(...batch.filter(canManage));
     if (batch.length < 200) break;

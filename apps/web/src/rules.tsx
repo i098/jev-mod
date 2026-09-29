@@ -3,6 +3,7 @@ import { ArrowUpRight, Radio } from 'lucide-react';
 import { catalog, type Settings } from '@jev-mod/core/policy.ts';
 import type { DashboardData, Decision } from '@jev-mod/core/types.ts';
 import { api, actionLabels, percentage } from './api';
+import { HelpTip } from './help-tip';
 
 export function ActionSelect({ value, onChange, label }: { value: Settings['localAction']; onChange(value: Settings['localAction']): void; label: string }) {
   return <select className="select select-sm" aria-label={label} value={value} onChange={event => onChange(event.target.value as Settings['localAction'])}>
@@ -16,7 +17,7 @@ export function Rules({ draft, update, guildId, demo, disabled, keyStatus }: {
   draft: Settings; update(value: Settings): void; guildId: string; demo: boolean; disabled: boolean; keyStatus: DashboardData['keyStatus'];
 }) {
   return <><header className="page-title"><h1>Auto moderation</h1></header>
-    <section className="mode-panel"><Radio size={17} aria-hidden="true" /><div><h2>Moderation mode</h2><details className="control-help"><summary>Mode behavior</summary>Monitor records matches. Protect applies actions after messages are posted. Paused disables automatic checks.</details></div>
+    <section className="mode-panel"><Radio size={17} aria-hidden="true" /><h2 className="label-with-help">Moderation mode<HelpTip label="Mode behavior">Monitor records matches. Protect applies actions after messages are posted. Paused disables automatic checks.</HelpTip></h2>
       <select className="select select-sm" aria-label="Moderation mode" disabled={disabled} value={draft.mode} onChange={event => update({ ...draft, mode: event.target.value as Settings['mode'] })}>
         <option value="monitor">Monitor only</option><option value="protect">Protect server</option><option value="off">Paused</option></select></section>
     <div className="rules-layout"><section><div className="section-heading"><h2>Message rules</h2><span>6 categories · Jev</span></div>
@@ -35,7 +36,7 @@ function Tester({ guildId, demo, keyStatus }: { guildId: string; demo: boolean; 
   const [result, setResult] = useState<(Decision & { action: string }) | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  return <aside className="tester card"><h2>Try a message</h2>{!demo && keyStatus.source === 'missing' && <p role="status">Jev rules need a TypeSafe key. Add one under Server settings, API key.</p>}
+  return <aside className="tester card"><h2 className="label-with-help">Try a message<HelpTip label="Test behavior and data sharing">Uses saved rules without channel or role exceptions. No Discord action runs.{!demo && ' Enabled Jev rules send message text to TypeSafe.'}</HelpTip></h2>{!demo && keyStatus.source === 'missing' && <p role="status">Jev rules need a TypeSafe key. Add one under Server settings, API key.</p>}
     <form onSubmit={async event => {
       event.preventDefault(); setBusy(true); setError(''); setResult(null);
       try { setResult(await api(`/api/guilds/${guildId}/test`, { method: 'POST', body: JSON.stringify({ content }) })); }
@@ -45,5 +46,5 @@ function Tester({ guildId, demo, keyStatus }: { guildId: string; demo: boolean; 
       <button className="btn btn-primary" disabled={busy}>{busy ? 'Checking…' : 'Test saved rules'}<ArrowUpRight size={15} aria-hidden="true" /></button></form>
     <div aria-live="polite">{error && <p className="error test-result">{error}</p>}{result && <div className="test-result"><h3>{({ allow: 'Allow message', monitor: 'Record for review', ...actionLabels })[result.action as keyof typeof actionLabels] ?? result.action}</h3>
       <p className="fine">Saved rules · {result.model ?? 'Local checks'}</p>{result.scores.map(score => <div key={score.id}><div className="score"><span>{score.name}</span><span>{percentage(score.probability)}</span></div><progress className="progress progress-primary" max={1} value={score.probability} aria-label={`${score.name} match probability`} /></div>)}</div>}</div>
-    <details className="tester-foot"><summary>Test behavior and data sharing</summary>Uses saved rules without channel or role exceptions. No Discord action runs.{!demo && ' Enabled Jev rules send message text to TypeSafe.'}</details></aside>;
+    </aside>;
 }
