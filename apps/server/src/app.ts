@@ -117,7 +117,10 @@ export function createDashboard(services: Services) {
   });
   app.notFound(c => c.json({ error: 'Not found.' }, 404));
   app.onError((error, c) => {
-    const status = error instanceof ZodError || error instanceof SyntaxError ? 400 : (error as Error & { status?: number }).status ?? 503;
+    const failure = error as Error & { status?: unknown; statusCode?: unknown };
+    const candidate = failure.statusCode ?? failure.status;
+    const status = error instanceof ZodError || error instanceof SyntaxError ? 400
+      : typeof candidate === 'number' && Number.isInteger(candidate) && candidate >= 400 && candidate <= 599 ? candidate : 503;
     if (status >= 500) console.error(JSON.stringify({ event: 'request_failed', status }));
     return c.json({ error: status === 400 ? 'Invalid input. Check the field limits.' : status < 500 ? error.message
       : 'Service unavailable. Refresh activity before retrying an action.' }, status as 400);

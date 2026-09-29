@@ -1,6 +1,7 @@
 import { defaultSettings } from '../packages/core/src/policy.ts';
 import type { CaseRecord, DashboardData } from '../packages/core/src/types.ts';
 
+const authError = new URLSearchParams(location.search).has('authError');
 const guildId = '100000000000000001';
 const channelId = '200000000000000001';
 const forumId = '200000000000000002';
@@ -31,7 +32,8 @@ window.fetch = async (input, options) => {
   const url = new URL(input instanceof Request ? input.url : String(input), location.origin);
   const method = options?.method ?? (input instanceof Request ? input.method : 'GET');
   if (url.pathname === '/api/session') return Response.json({ user: { id: '600000000000000001', name: 'Test moderator' }, demo: false, inviteUrl: null });
-  if (url.pathname === '/api/guilds') return Response.json([{ id: guildId, name: data.metadata.name, installed: true, inviteUrl: null }]);
+  if (url.pathname === '/api/guilds') return authError ? Response.json({ error: 'Discord access revoked' }, { status: 401 })
+    : Response.json([{ id: guildId, name: data.metadata.name, installed: true, inviteUrl: null }]);
   if (url.pathname === `/api/guilds/${guildId}`) return Response.json(data);
   if (url.pathname === `/api/guilds/${guildId}/settings` && method === 'PUT') {
     const { settings } = JSON.parse(String(options?.body));
@@ -87,6 +89,15 @@ async function view(name: string, title: string) {
 async function run() {
   history.replaceState({}, '', `/servers/${guildId}/settings`);
   await import('../apps/web/src/main.tsx');
+  if (authError) {
+    await until(() => document.querySelector('h1')?.textContent === 'Jev-Mod could not load');
+    assert(button('Sign out').checkVisibility(), 'Loading errors must expose sign-out');
+    button('Sign out').click();
+    await until(() => signOuts === 1 && !button('Sign out').disabled);
+    assert(document.querySelector('[role="alert"]')?.textContent === 'Test sign-out failed', 'Sign-out failures must stay visible and retryable');
+    document.getElementById('test-result')!.textContent = 'PASS: revoked OAuth access exposes a working, retryable sign-out action';
+    return;
+  }
   await until(() => document.querySelector('h1')?.textContent === 'Server settings');
   assert(checkbox(`Unavailable · ${missingChannel}`).checked, 'Missing channel must stay visible and selected');
   assert(checkbox(`Unavailable · ${missingRole}`).checked, 'Missing role must stay visible and selected');

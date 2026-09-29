@@ -29,9 +29,17 @@ const moderate = createModerator({ store, discord, classify: async (...args: Par
 }, report });
 const enqueue = createQueue(async (message: unknown) => moderate(await discord.snapshot(message)), { onError: report });
 let initialized = false;
+let gatewayReady = false;
 let guildWrites = Promise.resolve();
 discord.onMessage((message: unknown) => { if (initialized) enqueue(message); });
 discord.client.on(Events.Error, () => console.error(JSON.stringify({ event: 'discord_error' })));
+discord.client.on(Events.ShardReady, async () => {
+  if (gatewayReady) {
+    console.warn(JSON.stringify({ event: 'gateway_reidentified' }));
+    process.exitCode = 1; await stop();
+  }
+  gatewayReady = true;
+});
 discord.client.on(Events.GuildCreate, guild => {
   guildWrites = guildWrites.then(async () => { if (!stopping) await rpc('registerGuild', [guild.id]); })
     .catch(async () => { report('guild_registration_failed', guild.id); process.exitCode = 1; await stop(); });

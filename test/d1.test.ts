@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { Miniflare } from 'miniflare';
 import { createStore } from '../packages/db/src/index.ts';
 import { defaultSettings } from '../packages/core/src/policy.ts';
@@ -95,4 +96,15 @@ test('D1 and HTTP contracts enforce tenant isolation, CAS, audit atomicity, budg
   await assert.rejects(() => store.addCase({ ...item, messageId: '400000000000000003' }),
     error => error instanceof Error && error.cause instanceof Error && /FOREIGN KEY/.test(error.cause.message));
   assert.equal((await store.listCases(guild)).length, 0);
+  const { APIError } = await import(createRequire(new URL('../packages/auth/package.json', import.meta.url)).resolve('better-auth/api'));
+  for (const [failure, expectedStatus] of [
+    [new APIError('UNAUTHORIZED', { message: 'Session expired' }), 401],
+    [Object.assign(new Error('Forbidden'), { status: 403 }), 403],
+    ...['UNAUTHORIZED', 200, 999, NaN, 401.5].map(status => [Object.assign(new Error('Invalid status'), { status }), 503]),
+  ] as const) {
+    services.guilds = async () => { throw failure; };
+    const response = await app.request('/api/guilds');
+    assert.equal(response.status, expectedStatus);
+    assert.equal(typeof (await response.json()).error, 'string');
+  }
 });

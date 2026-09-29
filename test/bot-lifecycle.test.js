@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { syncBuiltinESMExports } from 'node:module';
 import { setImmediate } from 'node:timers/promises';
-import { Client, Events } from 'discord.js';
+import { Client, Events, Status } from 'discord.js';
 
 test('startup reconciliation preserves concurrent guild joins and departures', { timeout: 10000 }, async t => {
   const previousEnv = { ...process.env };
@@ -49,8 +49,8 @@ test('startup reconciliation preserves concurrent guild joins and departures', {
   assert.deepEqual([...guilds], ['joined']);
 });
 
-for (const method of ['registerGuild', 'forgetGuild']) {
-  test(`${method} failure stops the bot for reconciliation on restart`, { timeout: 10000 }, async t => {
+for (const failure of ['registerGuild', 'forgetGuild', 'gatewayReidentified', 'gatewayDisconnected']) {
+  test(`${failure} stops the bot for reconciliation on restart`, { timeout: 10000 }, async t => {
     const previousEnv = { ...process.env };
     const previousExitCode = process.exitCode;
     const previousSignals = new Map(['SIGTERM', 'SIGINT'].map(signal => [signal, new Set(process.listeners(signal))]));
@@ -64,13 +64,13 @@ for (const method of ['registerGuild', 'forgetGuild']) {
     t.mock.method(http, 'createServer', handler => { handleRequest = handler; return { listen() {}, close() { closed = true; } }; });
     syncBuiltinESMExports();
     t.mock.method(Client.prototype, 'login', async function () { client = this; });
-    t.mock.method(Client.prototype, 'isReady', () => true);
+    if (failure === 'gatewayDisconnected') t.mock.timers.enable({ apis: ['Date', 'setInterval'], now: 1000 });
     const destroy = Client.prototype.destroy;
     t.mock.method(Client.prototype, 'destroy', async function () { await destroy.call(this); stopped.resolve(); });
     t.mock.method(globalThis, 'fetch', async (url, options) => {
       assert.equal(url, 'http://jev.internal/store');
       const input = JSON.parse(options.body);
-      if (input.method === method) { writes.push(input.args[0]); throw new Error('store unavailable'); }
+      if (input.method === failure) { writes.push(input.args[0]); throw new Error('store unavailable'); }
       return Response.json({ result: input.method === 'allGuilds' ? [] : null });
     });
     t.after(async () => {
@@ -83,24 +83,37 @@ for (const method of ['registerGuild', 'forgetGuild']) {
       for (const [signal, listeners] of previousSignals) {
         for (const listener of process.listeners(signal)) if (!listeners.has(listener)) process.removeListener(signal, listener);
       }
-      t.mock.restoreAll(); syncBuiltinESMExports();
+      t.mock.restoreAll(); t.mock.timers.reset(); syncBuiltinESMExports();
     });
-    await import(`../apps/bot/src/index.ts?failure=${method}`);
+    await import(`../apps/bot/src/index.ts?failure=${failure}`);
+    client.ws.status = Status.Ready;
+    client.ws.shards.set(0, { status: Status.Ready });
     client.application = { commands: { create: async () => initialized.resolve() } };
+    client.emit(Events.ShardReady, 0);
     client.emit(Events.ClientReady, client);
     await initialized.promise; await setImmediate();
     let health;
     const response = { setHeader() {}, end(body) { health = JSON.parse(body); } };
     await handleRequest({ url: '/healthz' }, response);
     assert.equal(health.connected, true);
-    const event = method === 'registerGuild' ? Events.GuildCreate : Events.GuildDelete;
-    client.emit(event, { id: 'failed-guild' });
-    client.emit(event, { id: 'queued-guild' });
+    client.emit(Events.ShardResume, 0, 1);
+    assert.equal(closed, false);
+    if (failure === 'gatewayReidentified') client.emit(Events.ShardReady, 0);
+    else if (failure === 'gatewayDisconnected') {
+      client.ws.shards.get(0).status = Status.Resuming;
+      await handleRequest({ url: '/healthz' }, response);
+      assert.equal(health.connected, false);
+      t.mock.timers.tick(210001);
+    } else {
+      const event = failure === 'registerGuild' ? Events.GuildCreate : Events.GuildDelete;
+      client.emit(event, { id: 'failed-guild' });
+      client.emit(event, { id: 'queued-guild' });
+    }
     await stopped.promise; await setImmediate();
     await handleRequest({ url: '/healthz' }, response);
     assert.equal(health.connected, false);
     assert.equal(closed, true);
     assert.equal(process.exitCode, 1);
-    assert.deepEqual(writes, ['failed-guild']);
+    assert.deepEqual(writes, failure.startsWith('gateway') ? [] : ['failed-guild']);
   });
 }

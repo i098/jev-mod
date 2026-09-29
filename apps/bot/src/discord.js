@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, Partials, PermissionFlagsBits, ActivityType } from 'discord.js';
+import { Client, Events, GatewayIntentBits, Partials, PermissionFlagsBits, ActivityType, Status } from 'discord.js';
 import { messageHash } from '@jev-mod/core/moderation.js';
 
 const MANAGE = PermissionFlagsBits.ManageGuild;
@@ -15,15 +15,16 @@ export function createDiscord(token) {
     if (!after.partial && before.content === after.content) return;
     for (const watch of watching.get(after.id) ?? []) watch.changed = true;
   });
+  const ready = () => client.isReady() && client.ws.shards.size > 0 && client.ws.shards.every(shard => shard.status === Status.Ready);
   async function guildFor(id) {
-    if (!client.isReady()) throw Object.assign(new Error('Discord is reconnecting. Try again shortly.'), { status: 503 });
+    if (!ready()) throw Object.assign(new Error('Discord is reconnecting. Try again shortly.'), { status: 503 });
     const guild = client.guilds.cache.get(id);
     if (!guild) throw Object.assign(new Error('Add Jev-Mod to this server first.'), { status: 404 });
     return guild;
   }
   return {
     client,
-    ready: () => client.isReady(),
+    ready,
     installed: id => client.guilds.cache.has(id),
     async start() { await client.login(token); },
     async stop() { await client.destroy(); },
@@ -49,6 +50,7 @@ export function createDiscord(token) {
       let member;
       try { member = await guild.members.fetch({ user: userId, force: true }); }
       catch { throw Object.assign(new Error('You cannot manage this server.'), { status: 403 }); }
+      await guildFor(guildId);
       if (guild.ownerId !== userId && !member.permissions.has(MANAGE)) {
         throw Object.assign(new Error('Manage Server permission is required.'), { status: 403 });
       }
@@ -106,6 +108,7 @@ export function createDiscord(token) {
       if (messageHash(message.content) !== hash) return 'message_changed';
       if (!await isCurrent()) return 'policy_changed';
       if (watch.changed) return 'message_changed';
+      if (!ready()) return 'delete_failed';
       if (!message.deletable) return 'missing_permission';
       await message.delete();
       if (action !== 'timeout') return 'deleted';
@@ -113,6 +116,7 @@ export function createDiscord(token) {
         if (!await isCurrent()) return 'deleted_timeout_skipped';
         member = await guild.members.fetch({ user: message.author.id, force: true });
         if (member.roles.cache.some(role => exemptRoles.includes(role.id)) || !await isCurrent()) return 'deleted_timeout_skipped';
+        if (!ready()) return 'deleted_timeout_skipped';
         if (!member.moderatable) return 'deleted_timeout_failed';
         await member.timeout(timeoutMinutes * 60000, reason.slice(0, 500));
         return 'deleted_timed_out';

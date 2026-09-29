@@ -13,6 +13,7 @@ export const useApp = () => useContext(AppContext)!;
 function Root() {
   const [data, setData] = useState<AppState | null>(null);
   const [error, setError] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     (async () => {
@@ -22,7 +23,15 @@ function Root() {
     })().catch(error => { if (!controller.signal.aborted) setError(error.message); });
     return () => controller.abort();
   }, []);
-  if (error) return <main className="center"><h1>Jev-Mod could not load</h1><p role="alert">{error}</p><button className="btn" onClick={() => location.reload()}>Try again</button></main>;
+  if (error) return <main className="center"><h1>Jev-Mod could not load</h1><p role="alert">{error}</p><button className="btn" disabled={signingOut} onClick={() => location.reload()}>Try again</button>
+    <button className="btn btn-ghost" disabled={signingOut} onClick={async () => {
+      setSigningOut(true);
+      try {
+        const result = await authClient.signOut();
+        if (result.error) throw new Error(result.error.message ?? 'Sign-out failed.');
+        location.assign('/');
+      } catch (error) { setError((error as Error).message); setSigningOut(false); }
+    }}>Sign out</button></main>;
   if (!data) return <main className="center" aria-busy="true"><span className="loading loading-spinner loading-sm" />Loading Jev-Mod…</main>;
   if (!data.session.user) return <Login inviteUrl={data.session.inviteUrl} />;
   return <AppContext.Provider value={data}><Outlet /></AppContext.Provider>;
