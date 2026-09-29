@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useBlocker, useNavigate } from '@tanstack/react-router';
 import { ShieldCheck, SlidersHorizontal, ListFilter } from 'lucide-react';
 import type { DashboardData, PolicyRecord } from '@jev-mod/core/types.ts';
 import type { Settings as Policy } from '@jev-mod/core/policy.ts';
@@ -22,22 +22,30 @@ export function Dashboard({ guildId, view }: { guildId: string; view: string }) 
   const navigate = useNavigate();
   const guild = guilds.find(item => item.id === guildId);
   const dirty = data && draft ? JSON.stringify(draft) !== JSON.stringify(data.settings) : false;
+  const dirtyRef = useRef(false);
+  dirtyRef.current = dirty;
+  useBlocker({
+    enableBeforeUnload: dirty,
+    shouldBlockFn: ({ next }) => {
+      if (!dirty || ('guildId' in next.params && next.params.guildId === guildId)) return false;
+      return !confirm('Discard unsaved changes and leave this server?');
+    },
+  });
   const load = useCallback(async () => {
     controller.current?.abort(); controller.current = new AbortController();
     const current = controller.current;
     const result = await api<DashboardData>(`/api/guilds/${guildId}`, { signal: current.signal });
     if (current.signal.aborted || !alive.current) return;
-    setData(result); setDraft(structuredClone(result.settings)); setError('');
+    // A case refresh must not overwrite policy edits made in another dashboard view.
+    if (!dirtyRef.current) { setData(result); setDraft(structuredClone(result.settings)); }
+    else setData(previous => previous ? { ...result, settings: previous.settings, version: previous.version } : result);
+    setError('');
   }, [guildId]);
   useEffect(() => {
     alive.current = true;
     if (guild?.installed) load().catch(error => { if (error.name !== 'AbortError' && alive.current) setError(error.message); });
     return () => { alive.current = false; controller.current?.abort(); };
   }, [load, guild?.installed]);
-  useEffect(() => {
-    const handler = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } };
-    window.addEventListener('beforeunload', handler); return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 6000); return () => clearTimeout(timer); }, [toast]);
   const navigation = [{ view: 'rules', label: 'Auto moderation', icon: ShieldCheck }, { view: 'activity', label: 'Activity', icon: ListFilter }, { view: 'settings', label: 'Server settings', icon: SlidersHorizontal }];
   async function save() {
@@ -47,6 +55,7 @@ export function Dashboard({ guildId, view }: { guildId: string; view: string }) 
       const normalized = { ...draft, blockedPhrases: draft.blockedPhrases.map(item => item.trim()).filter(Boolean) };
       const policy = await api<PolicyRecord>(`/api/guilds/${guildId}/settings`, { method: 'PUT', body: JSON.stringify({ settings: normalized, version: data.version }) });
       if (!alive.current) return;
+      dirtyRef.current = false;
       setData({ ...data, ...policy }); setDraft(structuredClone(policy.settings));
       setToast(session.demo ? 'Preview settings saved locally.' : 'Server settings saved.'); await load();
     } catch (error) {
@@ -57,7 +66,6 @@ export function Dashboard({ guildId, view }: { guildId: string; view: string }) 
   }
   return <div className="shell"><a className="skip" href="#main">Skip to content</a><aside className="sidebar"><Brand /><p className="brand-subtitle">Community, with boundaries.</p>
     <div><label htmlFor="server" className="server-label">YOUR SERVER</label><select id="server" className="select server-select" aria-label="Select server" value={guildId} disabled={busy} onChange={event => {
-      if (dirty && !confirm('Discard unsaved changes and switch servers?')) return;
       navigate({ to: '/servers/$guildId/$view', params: { guildId: event.target.value, view } });
     }}>{guilds.map(item => <option key={item.id} value={item.id}>{item.name}{item.installed ? '' : ' · Add bot'}</option>)}</select></div>
     <nav aria-label="Dashboard" className="menu nav">{navigation.map(item => <Link key={item.view} to="/servers/$guildId/$view" params={{ guildId, view: item.view }} className={view === item.view ? 'active' : ''} aria-current={view === item.view ? 'page' : undefined} onClick={event => { if (busy) event.preventDefault(); }}><item.icon size={17} strokeWidth={1.5} />{item.label}{item.view === 'activity' && <span className="badge badge-sm nav-count">{data?.stats.review ?? 0}</span>}</Link>)}</nav>
