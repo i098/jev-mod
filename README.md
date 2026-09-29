@@ -42,15 +42,12 @@ Follow the [operator guide](docs/guide.md#cloudflare-setup) for credentials, mig
 
 ## Website deployment
 
-The landing page is static HTML/CSS in `docs/`; `.nojekyll` disables Jekyll.
+Landing: **https://jevmod.us** · Dashboard: **https://app.jevmod.us**
 
-1. Merge the site files into `main`.
-2. In [GitHub Pages settings](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), select **Deploy from a branch**, **main**, **/docs**, then **Save**.
-3. After deployment, verify the [public website](https://jevmod.us/), its images, favicon, links, and README rendering on GitHub.
-
-GitHub runs its own Pages deployment; no custom CI workflow is needed.
-Custom domain: **jevmod.us**; dashboard: **app.jevmod.us**.
-Keep Discord’s registered callback aligned with dashboard `PUBLIC_URL`.
+- Landing source: `docs/`; hosting: Cloudflare Workers Static Assets.
+- Deploy with `pnpm exec wrangler deploy --config wrangler.site.jsonc`.
+- For your own site, update its routes, `PUBLIC_URL`, and proxied DNS records.
+- Dashboard uses its own Worker and matching Discord OAuth callback.
 
 ## Local preview
 
