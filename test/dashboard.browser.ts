@@ -265,6 +265,20 @@ async function run() {
   assert(confirmations === 2 && button('Save changes'), 'Failed sign-out retains draft');
   const stillBlocked = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(stillBlocked);
   assert(stillBlocked.defaultPrevented, 'Failed sign-out retains unload protection');
-  document.getElementById('test-result')!.textContent = 'PASS: bounded exceptions, accessible tabs, filters, timeout, API keys, pagination, stale search, and sign-out';
+  changeSelect(selectByName('Moderation mode'), 'off'); await settle();
+  approveDiscard = false; changeSelect(selectByName('Select server'), secondGuildId);
+  await until(() => confirmations === 3); await settle();
+  assert(location.pathname.includes(guildId) && selectByName('Select server').value === guildId, 'Canceled server switch retains route and selected server');
+  assert(selectByName('Moderation mode').value === 'off' && button('Save changes'), 'Canceled server switch retains unsaved settings');
+  const canceledSwitch = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(canceledSwitch);
+  assert(canceledSwitch.defaultPrevented, 'Canceled server switch retains unload protection');
+  approveDiscard = true; changeSelect(selectByName('Select server'), secondGuildId);
+  await until(() => location.pathname.includes(secondGuildId) && document.querySelector('h1')?.textContent === 'Auto moderation');
+  assert(confirmations === 4 && selectByName('Select server').value === secondGuildId, 'Confirmed server switch selects the new server');
+  assert(selectByName('Moderation mode').value === otherData.settings.mode && !document.querySelector('.savebar'), 'New server loads its own settings without the previous draft');
+  changeSelect(selectByName('Select server'), guildId);
+  await until(() => location.pathname.includes(guildId) && document.querySelector('h1')?.textContent === 'Auto moderation');
+  assert(confirmations === 4 && selectByName('Moderation mode').value === data.settings.mode && !document.querySelector('.savebar'), 'Returning to the original server restores saved settings without the discarded draft');
+  document.getElementById('test-result')!.textContent = 'PASS: bounded exceptions, accessible tabs, filters, timeout, API keys, pagination, stale search, sign-out, and unsaved server switching';
 }
 run().catch(error => { document.getElementById('test-result')!.textContent = `FAIL: ${error.message}`; console.error(error); });
