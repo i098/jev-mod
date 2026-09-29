@@ -54,7 +54,16 @@ function botApi(env: Env): BotApi {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const path = new URL(request.url).pathname;
-    if (path === '/healthz') return Response.json({ status: 'ok' });
+    if (path === '/healthz') {
+      const headers = { 'Cache-Control': 'no-store' };
+      if (env.BOT_ENABLED !== 'true') return Response.json({ status: 'ok', bot: 'disabled' }, { headers });
+      try {
+        const response = await getContainer(env.BOT, 'gateway-v1').fetch(new Request('http://bot/healthz', { signal: AbortSignal.timeout(5000) }));
+        const health = await response.json() as { connected?: boolean };
+        if (response.ok && health.connected === true) return Response.json({ status: 'ok', bot: 'connected' }, { headers });
+      } catch { /* Readiness must fail without exposing provider errors or credentials. */ }
+      return Response.json({ status: 'not_ready', bot: 'unavailable' }, { status: 503, headers });
+    }
     if (!path.startsWith('/api/')) return env.ASSETS.fetch(request);
     const store = createStore(createDb(env.DB));
     const app = createDashboard(createServices(env, store, botApi(env), request => request.headers.get('cf-connecting-ip') ?? 'unknown'));
