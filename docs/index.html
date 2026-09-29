@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#111514">
+  <title>Jev-Mod — Open-source Discord moderation</title>
+  <meta name="description" content="Keep your Discord server welcoming with Jev-Mod. AI message filters, clear moderation controls, and your own TypeSafe API key. Open source and self-hostable.">
+  <link rel="canonical" href="https://undeemed.github.io/jev-mod/">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Jev-Mod — Moderation on your terms">
+  <meta property="og:description" content="AI moderation for Discord. Your rules, your API key. Open source and self-hostable.">
+  <meta property="og:url" content="https://undeemed.github.io/jev-mod/">
+  <meta property="og:image" content="https://undeemed.github.io/jev-mod/images/dashboard.png">
+  <meta property="og:image:alt" content="Jev-Mod dashboard showing sample moderation cases">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root { color-scheme: dark; --bg:#111514; --surface:#171c1a; --text:#e7ece7; --muted:#a7b4aa; --line:#2a342e; --green:#b5e5a5; font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); }
+    a { color:inherit; text-underline-offset:4px; }
+    a:hover { color:var(--green); }
+    a:focus-visible { outline:2px solid var(--green); outline-offset:5px; }
+    .wrap { width:min(1080px,calc(100% - 48px)); margin-inline:auto; }
+    header { min-height:96px; display:flex; align-items:center; justify-content:space-between; gap:24px; border-bottom:1px solid var(--line); }
+    .brand { display:inline-flex; align-items:center; gap:10px; font-size:23px; font-weight:700; letter-spacing:-1px; text-decoration:none; }
+    .brand img { width:34px; height:34px; }
+    nav { display:flex; align-items:center; gap:28px; font-size:14px; }
+    nav a { text-decoration:none; padding-block:12px; min-height:44px; white-space:nowrap; }
+    .skip { position:absolute; left:16px; top:-80px; padding:8px 16px; background:var(--green); color:var(--bg); z-index:1; }
+    .skip:focus { top:12px; }
+    .hero { padding:88px 0 56px; text-align:center; }
+    .eyebrow { margin:0 0 24px; color:var(--green); font-size:13px; letter-spacing:1px; }
+    h1 { margin:0; font-size:clamp(42px,6.5vw,76px); line-height:1.06; letter-spacing:-.055em; font-weight:620; }
+    h1 span { color:var(--green); }
+    .intro { max-width:480px; margin:24px auto 30px; color:var(--muted); font-size:18px; text-wrap:pretty; }
+    .actions { display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; }
+    .button { display:inline-flex; justify-content:center; align-items:center; min-height:48px; padding:10px 22px; border:1px solid var(--line); border-radius:6px; font-size:14px; font-weight:600; text-decoration:none; }
+    .primary { background:var(--green); color:#111a10; border-color:var(--green); }
+    .primary:hover { background:#c7efba; color:#111a10; }
+    .secondary:hover { border-color:var(--green); }
+    .note { margin:18px 0 0; font-size:12px; color:var(--muted); }
+    figure { margin:0; }
+    .preview { display:block; width:100%; height:auto; border:1px solid var(--line); border-radius:8px; background:var(--surface); }
+    figcaption { margin:12px 0 0; text-align:center; font-size:12px; color:var(--muted); }
+    .features { display:grid; grid-template-columns:repeat(3,1fr); gap:40px; padding:60px 0; border-bottom:1px solid var(--line); }
+    h2 { margin:0 0 12px; font-size:19px; letter-spacing:-.4px; font-weight:600; }
+    .features p { margin:0; color:var(--muted); font-size:14px; }
+    .features a { display:inline-block; margin-top:16px; font-size:13px; }
+    footer { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:28px 0 40px; font-size:12px; color:var(--muted); }
+    footer p { margin:0; }
+    footer a { white-space:nowrap; }
+    @media (max-width:640px) {
+      .wrap { width:calc(100% - 32px); }
+      header { min-height:80px; gap:16px; }
+      .brand { font-size:20px; gap:8px; }
+      .brand img { width:28px; height:28px; }
+      nav { gap:12px; font-size:12px; }
+      nav .docs { display:none; }
+      .hero { padding:56px 0 40px; }
+      .intro { font-size:16px; max-width:320px; }
+      .features { grid-template-columns:1fr; gap:32px; padding:40px 0; }
+      footer { flex-direction:column; align-items:flex-start; gap:12px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="./" aria-label="Jev-Mod home"><img src="favicon.svg" alt="" width="34" height="34">jev·mod</a>
+      <nav aria-label="Main navigation">
+        <a class="docs" href="https://github.com/undeemed/jev-mod/blob/main/docs/guide.md">Docs</a>
+        <a href="https://github.com/undeemed/jev-mod">GitHub ↗</a>
+        <a href="https://jev-mod.jerry-2c0.workers.dev">Dashboard ↗</a>
+      </nav>
+    </header>
+    <main id="main">
+      <section class="hero" aria-labelledby="title">
+        <p class="eyebrow">OPEN-SOURCE DISCORD MODERATION</p>
+        <h1 id="title">Your community.<br><span>Your rules.</span></h1>
+        <p class="intro">Catch spam, scams, and harassment with AI.<br>Decide what happens next.</p>
+        <div class="actions">
+          <a class="button primary" href="https://discord.com/oauth2/authorize?client_id=1554338188708020294&amp;scope=bot%20applications.commands&amp;permissions=1099511704576&amp;integration_type=0">Add to Discord <span aria-hidden="true">&nbsp;↗</span></a>
+          <a class="button secondary" href="https://jev-mod.jerry-2c0.workers.dev">Open dashboard</a>
+        </div>
+        <p class="note">Bring your own TypeSafe key for AI filters.</p>
+      </section>
+      <figure>
+        <img class="preview" src="images/dashboard.png" alt="Jev-Mod activity dashboard with searchable cases, rule filters, and moderation outcomes" width="1280" height="720" fetchpriority="high">
+        <figcaption>Dashboard preview · sample data</figcaption>
+      </figure>
+      <section class="features" aria-label="Moderation controls">
+        <div>
+          <h2>Choose the response.</h2>
+          <p>Start in Monitor only. Log a match, remove a message, or apply a timeout when you enable protection.</p>
+          <a href="https://github.com/undeemed/jev-mod/blob/main/docs/guide.md#moderation">Explore moderation →</a>
+        </div>
+        <div>
+          <h2>Make room for context.</h2>
+          <p>Set channel and role exceptions. Add blocked phrases and mention limits. Review every recorded case.</p>
+          <a href="https://jev-mod.jerry-2c0.workers.dev">Configure your server →</a>
+        </div>
+        <div>
+          <h2>Keep it yours.</h2>
+          <p>Use the hosted bot or run your own on Cloudflare or Docker. Open source, under the MIT license.</p>
+          <a href="https://github.com/undeemed/jev-mod/blob/main/docs/self-hosting.md">Self-host Jev-Mod →</a>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <p>AI rules send message text to TypeSafe.<br>Flagged evidence is retained for 30 days.</p>
+      <a href="https://github.com/undeemed/jev-mod/blob/main/LICENSE">Jev-Mod · MIT licensed ↗</a>
+    </footer>
+  </div>
+</body>
+</html>

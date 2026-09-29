@@ -9,7 +9,7 @@ See [the source research](oss-moderation-research.md).
 
 ## Product behavior
 
-Current administrator workflows, message handling, and enforcement limits are documented in [README](../README.md#moderation).
+Current administrator workflows, message handling, and enforcement limits are documented in the [operator guide](guide.md#moderation).
 
 - Discord login lists servers that the user can manage and provides an installation link.
 - Each server has separate rules, role and channel exceptions, cases, and settings.
@@ -40,7 +40,7 @@ D1 or SQLite stores settings, cases, audit records, encrypted server keys, and d
 Use one bot process initially; do not run duplicate Gateway workers against the same bot.
 Bound in-flight Jev work, queued messages, and per-server request budgets.
 Run classification in the website server so server-specific Jev keys never reach the bot or browser.
-Key selection, missing-key behavior, and deterministic-only operation follow [the runtime contract](../README.md#runtime-and-data).
+Key selection, missing-key behavior, and deterministic-only operation follow [the runtime contract](guide.md#runtime-and-data).
 
 ## Design
 
@@ -76,7 +76,7 @@ No automatic bans, billing, plugin marketplace, attachment scanning, or anti-rai
 - `packages/db/migrations/`: shared D1 and SQLite schema; operators apply remote D1 migrations explicitly.
 - `compose.yaml`: self-hosted server, bot profile, and persistent database volume.
 
-Setup, deployment, and common commands are maintained in [README](../README.md).
+Common setup and website deployment are maintained in [README](../README.md); detailed operator instructions are in the [operator guide](guide.md#hosting).
 
 Use named functions, async/await, parameterized SQL, and small modules.
 For example, `await store.getSettings(guildId)` always requires an explicit server ID.

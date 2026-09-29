@@ -87,7 +87,7 @@ Keep one server process and one bot process.
 SQLite uses one connection with foreign keys, WAL, a finite busy timeout, and synchronous atomic batches.
 Do not scale these services horizontally or run a second Gateway client for the same deployment.
 `restart: unless-stopped` restarts exited processes; the bot watchdog exits after prolonged Gateway failure.
-Server and bot health checks have different meanings; see [the runtime health contract](../README.md#runtime-and-data).
+Server and bot health checks have different meanings; see [the runtime health contract](guide.md#runtime-and-data).
 Docker does not restart a container solely because it becomes unhealthy.
 Investigate persistent unhealthy status and inspect redacted service logs.
 

@@ -1,7 +1,7 @@
 # Local verification
 
 The original Express/MySQL prototype is preserved on `codex/jev-mod-prototype`.
-The supported runtimes and selected stack are described in [README](../README.md#stack).
+The supported runtimes and selected stack are described in the [operator guide](guide.md#stack).
 
 ## Completed before the delivery gate
 
@@ -59,6 +59,6 @@ This fixture needs no API server and does not use the preview database.
 
 Local Node, SQLite, and browser-fixture checks do not prove production Compose operation, live Discord installation or commands, permission revocation against Discord, or actual message enforcement.
 Before calling a deployment ready, check the real login and server-list flow, Gateway readiness, monitoring, and moderation in an authorized test server.
-Interpret health results using [the runtime health contract](../README.md#runtime-and-data).
+Interpret health results using [the runtime health contract](guide.md#runtime-and-data).
 Model classification quality, token refresh, permission revocation, idle recovery, and deployment rollback require their own observed checks.
 Deployment-specific results belong in the delivery record; do not infer them from a passing fixture or a successful asset upload.
