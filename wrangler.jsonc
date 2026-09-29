@@ -4,7 +4,7 @@
   "main": "apps/server/src/index.ts",
   "compatibility_date": "2026-09-28",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": { "directory": "apps/web/dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*", "/healthz"] },
+  "assets": { "directory": "apps/web/dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": true },
   "vars": { "PUBLIC_URL": "https://jev-mod.example.invalid", "BOT_ENABLED": "false" },
   "d1_databases": [{ "binding": "DB", "database_name": "jev-mod", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "packages/db/migrations" }],
   "durable_objects": { "bindings": [{ "name": "BOT", "class_name": "BotContainer" }] },

@@ -2,6 +2,7 @@ import { defaultSettings } from '../packages/core/src/policy.ts';
 import type { CaseRecord, DashboardData } from '../packages/core/src/types.ts';
 
 const authError = new URLSearchParams(location.search).has('authError');
+const installationTest = new URLSearchParams(location.search).has('installationTest');
 const guildId = '100000000000000001';
 const secondGuildId = '100000000000000002';
 const channelId = '200000000000000001';
@@ -40,6 +41,7 @@ let pendingSearch: { resolve(value: Response): void; signal: AbortSignal } | und
 let keySaves = 0;
 let keyRemovals = 0;
 let failKeySave = false;
+let guildLoads = 0;
 const queries: URLSearchParams[] = [];
 const cursors: number[] = [];
 window.confirm = () => { confirmations++; return approveDiscard; };
@@ -47,8 +49,12 @@ window.fetch = async (input, options) => {
   const url = new URL(input instanceof Request ? input.url : String(input), location.origin);
   const method = options?.method ?? (input instanceof Request ? input.method : 'GET');
   if (url.pathname === '/api/session') return Response.json({ user: { id: '600000000000000001', name: 'Sample moderator' }, demo: false, inviteUrl: null });
-  if (url.pathname === '/api/guilds') return authError ? Response.json({ error: 'Discord access revoked' }, { status: 401 })
-    : Response.json([{ id: guildId, name: data.metadata.name, installed: true, inviteUrl: null }, { id: secondGuildId, name: otherData.metadata.name, installed: true, inviteUrl: null }]);
+  if (url.pathname === '/api/guilds') {
+    guildLoads++;
+    return authError ? Response.json({ error: 'Discord access revoked' }, { status: 401 })
+      : Response.json([{ id: guildId, name: data.metadata.name, installed: true, inviteUrl: null },
+        { id: secondGuildId, name: otherData.metadata.name, installed: !installationTest || guildLoads >= 3, inviteUrl: null }]);
+  }
   if (url.pathname === `/api/guilds/${guildId}`) return Response.json(data);
   if (url.pathname === `/api/guilds/${secondGuildId}`) return Response.json(otherData);
   if (url.pathname === `/api/guilds/${guildId}/settings` && method === 'PUT') {
@@ -140,8 +146,18 @@ async function view(name: string, title: string) {
   await until(() => document.querySelector('h1')?.textContent === title);
 }
 async function run() {
-  history.replaceState({}, '', `/servers/${guildId}/settings`);
+  history.replaceState({}, '', installationTest ? '/?installed=1' : `/servers/${guildId}/settings`);
   await import('../apps/web/src/main.tsx');
+  if (installationTest) {
+    await until(() => document.querySelector('h1')?.textContent === 'Auto moderation');
+    assert(guildLoads === 5, 'Generic installation must complete four refreshes despite an already installed server');
+    changeSelect(selectByName('Select server'), secondGuildId);
+    await until(() => location.pathname.includes(secondGuildId) && document.querySelector('h1')?.textContent === 'Auto moderation');
+    assert(selectByName('Select server').selectedOptions[0].textContent === otherData.metadata.name, 'Delayed installation must be selectable without adding the bot again');
+    assert(guildLoads === 5, 'Selecting the installed server must not require reloading servers');
+    document.getElementById('test-result')!.textContent = 'PASS: generic installation refreshes are bounded and include delayed registration';
+    return;
+  }
   if (authError) {
     await until(() => document.querySelector('h1')?.textContent === 'Jev-Mod could not load');
     assert(button('Sign out').checkVisibility(), 'Loading errors must expose sign-out');

@@ -5,17 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#111514">
-  <title>Jev-Mod — Open-source Discord moderation</title>
-  <meta name="description" content="Keep your Discord server welcoming with Jev-Mod. AI message filters, clear moderation controls, and your own TypeSafe API key. Open source and self-hostable.">
-  <link rel="canonical" href="https://undeemed.github.io/jev-mod/">
+  <title>Jev-Mod — Jev AI moderation for Discord</title>
+  <meta name="description" content="Jev-powered Discord moderation with Jev-Mod. Configure TypeSafe Jev rules for spam, scams, and harassment. Bring your own API key or self-host.">
+  <link rel="canonical" href="https://jevmod.us/">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Jev-Mod — Moderation on your terms">
-  <meta property="og:description" content="AI moderation for Discord. Your rules, your API key. Open source and self-hostable.">
-  <meta property="og:url" content="https://undeemed.github.io/jev-mod/">
-  <meta property="og:image" content="https://undeemed.github.io/jev-mod/images/dashboard.png">
+  <meta property="og:title" content="Jev-Mod — Discord moderation powered by Jev">
+  <meta property="og:description" content="Use Jev from TypeSafe to check Discord messages against your rules. Open-source moderation with your own API key.">
+  <meta property="og:url" content="https://jevmod.us/">
+  <meta property="og:image" content="https://jevmod.us/images/dashboard.png">
   <meta property="og:image:alt" content="Jev-Mod dashboard showing sample moderation cases">
   <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Jev-Mod", "url": "https://jevmod.us/", "description": "Open-source Discord moderation powered by Jev, the decision model from TypeSafe.", "applicationCategory": "SecurityApplication", "operatingSystem": "Web", "license": "https://github.com/undeemed/jev-mod/blob/main/LICENSE"}</script>
   <style>
     :root { color-scheme: dark; --bg:#111514; --surface:#171c1a; --text:#e7ece7; --muted:#a7b4aa; --line:#2a342e; --green:#b5e5a5; font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
     * { box-sizing:border-box; }
@@ -33,7 +34,7 @@
     .skip:focus { top:12px; }
     .hero { padding:88px 0 56px; text-align:center; }
     .eyebrow { margin:0 0 24px; color:var(--green); font-size:13px; letter-spacing:1px; }
-    h1 { margin:0; font-size:clamp(42px,6.5vw,76px); line-height:1.06; letter-spacing:-.055em; font-weight:620; }
+    h1 { margin:0; font-size:clamp(38px,6.2vw,70px); line-height:1.06; letter-spacing:-.055em; font-weight:620; }
     h1 span { color:var(--green); }
     .intro { max-width:480px; margin:24px auto 30px; color:var(--muted); font-size:18px; text-wrap:pretty; }
     .actions { display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; }
@@ -74,19 +75,19 @@
       <nav aria-label="Main navigation">
         <a class="docs" href="https://github.com/undeemed/jev-mod/blob/main/docs/guide.md">Docs</a>
         <a href="https://github.com/undeemed/jev-mod">GitHub ↗</a>
-        <a href="https://jev-mod.jerry-2c0.workers.dev">Dashboard ↗</a>
+        <a href="https://app.jevmod.us">Dashboard ↗</a>
       </nav>
     </header>
     <main id="main">
       <section class="hero" aria-labelledby="title">
-        <p class="eyebrow">OPEN-SOURCE DISCORD MODERATION</p>
-        <h1 id="title">Your community.<br><span>Your rules.</span></h1>
-        <p class="intro">Catch spam, scams, and harassment with AI.<br>Decide what happens next.</p>
+        <p class="eyebrow">JEV FOR DISCORD</p>
+        <h1 id="title">Discord moderation.<br><span>Powered by Jev.</span></h1>
+        <p class="intro">Jev, TypeSafe’s decision model, checks messages against your rules. You choose the response.</p>
         <div class="actions">
-          <a class="button primary" href="https://discord.com/oauth2/authorize?client_id=1554338188708020294&amp;scope=bot%20applications.commands&amp;permissions=1099511704576&amp;integration_type=0">Add to Discord <span aria-hidden="true">&nbsp;↗</span></a>
-          <a class="button secondary" href="https://jev-mod.jerry-2c0.workers.dev">Open dashboard</a>
+          <a class="button primary" href="https://app.jevmod.us/api/install">Add to Discord <span aria-hidden="true">&nbsp;↗</span></a>
+          <a class="button secondary" href="https://app.jevmod.us">Open dashboard</a>
         </div>
-        <p class="note">Bring your own TypeSafe key for AI filters.</p>
+        <p class="note">Bring your own TypeSafe key to use Jev.</p>
       </section>
       <figure>
         <img class="preview" src="images/dashboard.png" alt="Jev-Mod activity dashboard with searchable cases, rule filters, and moderation outcomes" width="1280" height="720" fetchpriority="high">
@@ -94,14 +95,14 @@
       </figure>
       <section class="features" aria-label="Moderation controls">
         <div>
-          <h2>Choose the response.</h2>
-          <p>Start in Monitor only. Log a match, remove a message, or apply a timeout when you enable protection.</p>
+          <h2>Give Jev your rules.</h2>
+          <p>Define what Jev should flag. Start in Monitor only, then choose when to log, delete, or apply a timeout.</p>
           <a href="https://github.com/undeemed/jev-mod/blob/main/docs/guide.md#moderation">Explore moderation →</a>
         </div>
         <div>
           <h2>Make room for context.</h2>
           <p>Set channel and role exceptions. Add blocked phrases and mention limits. Review every recorded case.</p>
-          <a href="https://jev-mod.jerry-2c0.workers.dev">Configure your server →</a>
+          <a href="https://app.jevmod.us">Configure your server →</a>
         </div>
         <div>
           <h2>Keep it yours.</h2>
@@ -111,7 +112,7 @@
       </section>
     </main>
     <footer>
-      <p>AI rules send message text to TypeSafe.<br>Flagged evidence is retained for 30 days.</p>
+      <p>Enabled Jev rules send message text to TypeSafe.<br>Flagged evidence is retained for 30 days.</p>
       <a href="https://github.com/undeemed/jev-mod/blob/main/LICENSE">Jev-Mod · MIT licensed ↗</a>
     </footer>
   </div>

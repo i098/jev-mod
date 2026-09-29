@@ -35,6 +35,7 @@ const caseQuery = z.object({ before: idSchema.optional(), search: z.string().tri
   from: z.coerce.number().int().min(0).max(8640000000000000).optional(), to: z.coerce.number().int().min(0).max(8640000000000000).optional(),
 }).strict().refine(query => query.from === undefined || query.to === undefined || query.from <= query.to);
 const problem = (message: string, status: number) => Object.assign(new Error(message), { status });
+const botPermissions = (1024n | 2048n | 8192n | 65536n | (1n << 40n)).toString();
 
 export function createDashboard(services: Services) {
   const app = new Hono<Context>();
@@ -48,19 +49,41 @@ export function createDashboard(services: Services) {
     const key = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
     if (!await store.consumeBudget(`http:${key}`, 180)) return c.json({ error: 'Too many requests. Try again in a minute.' }, 429);
     await next();
+    c.header('Cache-Control', 'no-store');
   });
   const publicAuth = new Set(['/api/auth/get-session', '/api/auth/sign-in/social', '/api/auth/sign-out',
     '/api/auth/callback/discord', '/api/auth/error', '/api/auth/ok']);
+  app.get('/api/install', async c => {
+    if (services.demo) throw problem('Discord installation is disabled in preview.', 409);
+    const { guild_id: guild } = z.object({ guild_id: snowflake.optional() }).strict().parse(c.req.query());
+    const headers = new Headers({ 'Content-Type': 'application/json', Origin: services.origin });
+    const cookie = c.req.header('cookie');
+    if (cookie) headers.set('Cookie', cookie);
+    const authorization = await services.auth(new Request(`${services.origin}/api/auth/sign-in/social`, {
+      method: 'POST', headers, body: JSON.stringify({ provider: 'discord', disableRedirect: true,
+        scopes: ['bot', 'applications.commands'],
+        additionalParams: { permissions: botPermissions, integration_type: '0', prompt: 'consent',
+          ...(guild ? { guild_id: guild, disable_guild_select: 'true' } : {}) },
+        callbackURL: `${services.origin}${guild ? `/servers/${guild}/rules` : '/'}?installed=1`,
+        errorCallbackURL: `${services.origin}/?installation=cancelled`,
+      }),
+    }));
+    const redirectHeaders = new Headers(authorization.headers);
+    redirectHeaders.set('Cache-Control', 'no-store');
+    if (!authorization.ok) return new Response(authorization.body, { status: authorization.status, headers: redirectHeaders });
+    const { url } = z.object({ url: z.url() }).parse(await authorization.json());
+    redirectHeaders.delete('Content-Type');
+    redirectHeaders.delete('Content-Length');
+    redirectHeaders.set('Location', url);
+    return new Response(null, { status: 302, headers: redirectHeaders });
+  });
   app.on(['GET', 'POST'], '/api/auth/*', c => {
     if (!publicAuth.has(c.req.path)) return c.json({ error: 'Not found.' }, 404);
     return services.auth(c.req.raw);
   });
   function invite(guild = '') {
     if (services.demo) return null;
-    const permissions = (1024n | 2048n | 8192n | 65536n | (1n << 40n)).toString();
-    const params = new URLSearchParams({ client_id: services.clientId, scope: 'bot applications.commands', permissions, integration_type: '0' });
-    if (guild) { params.set('guild_id', guild); params.set('disable_guild_select', 'true'); }
-    return `https://discord.com/oauth2/authorize?${params}`;
+    return `${services.origin}/api/install${guild ? `?guild_id=${guild}` : ''}`;
   }
   app.get('/api/session', async c => {
     const user = await services.user(c.req.raw);

@@ -8,6 +8,7 @@ export type AuthEnv = { PUBLIC_URL: string; BETTER_AUTH_SECRET: string;
 export function createAuth(env: AuthEnv, db: Database) {
   return betterAuth({
     appName: 'Jev-Mod', baseURL: env.PUBLIC_URL, secret: env.BETTER_AUTH_SECRET,
+    logger: { level: 'error', log: () => console.error(JSON.stringify({ event: 'auth_failed' })) },
     database: drizzleAdapter(db, { provider: 'sqlite', schema, transaction: false }),
     trustedOrigins: [env.PUBLIC_URL],
     session: { expiresIn: 3600, cookieCache: { enabled: false } },

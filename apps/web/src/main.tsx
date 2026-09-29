@@ -11,6 +11,8 @@ const AppContext = createContext<AppState | null>(null);
 export const useApp = () => useContext(AppContext)!;
 
 function Root() {
+  const installed = new URLSearchParams(location.search).get('installed') === '1';
+  const installationCancelled = new URLSearchParams(location.search).get('installation') === 'cancelled';
   const [data, setData] = useState<AppState | null>(null);
   const [error, setError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
@@ -18,7 +20,14 @@ function Root() {
     const controller = new AbortController();
     (async () => {
       const session = await api<SessionInfo>('/api/session', { signal: controller.signal });
-      const guilds = session.user ? await api<Guild[]>('/api/guilds', { signal: controller.signal }) : [];
+      let guilds = session.user && !installationCancelled ? await api<Guild[]>('/api/guilds', { signal: controller.signal }) : [];
+      const selectedGuild = location.pathname.match(/^\/servers\/(\d{17,20})\//)?.[1];
+      for (let attempt = 0; installed && session.user && attempt < 4
+        && !guilds.some(guild => guild.installed && guild.id === selectedGuild); attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (controller.signal.aborted) return;
+        guilds = await api<Guild[]>('/api/guilds', { signal: controller.signal });
+      }
       if (!controller.signal.aborted) setData({ session, guilds });
     })().catch(error => { if (!controller.signal.aborted) setError(error.message); });
     return () => controller.abort();
@@ -32,13 +41,16 @@ function Root() {
         location.assign('/');
       } catch (error) { setError((error as Error).message); setSigningOut(false); }
     }}>Sign out</button></main>;
-  if (!data) return <main className="center" aria-busy="true"><span className="loading loading-spinner loading-sm" />Loading Jev-Mod…</main>;
+  if (!data) return <main className="center" aria-busy="true"><span className="loading loading-spinner loading-sm" />{installed ? 'Connecting your server…' : 'Loading Jev-Mod…'}</main>;
+  if (installationCancelled) return <main className="login"><Brand /><h1>Installation wasn’t completed</h1><p>Try again, or return to your dashboard.</p>
+    {data.session.inviteUrl && <a className="btn btn-primary" href={data.session.inviteUrl}>Try again</a>}
+    <a className="btn btn-ghost" href="/">Back to dashboard</a></main>;
   if (!data.session.user) return <Login inviteUrl={data.session.inviteUrl} />;
   return <AppContext.Provider value={data}><Outlet /></AppContext.Provider>;
 }
 function Login({ inviteUrl }: { inviteUrl: string | null }) {
   const [error, setError] = useState('');
-  return <main className="login"><Brand /><h1>Moderation for your<br />Discord server.</h1>
+  return <main className="login"><Brand /><h1>Discord moderation.<br />Powered by Jev.</h1>
     <button className="btn btn-primary" onClick={async () => {
       const result = await authClient.signIn.social({ provider: 'discord', callbackURL: location.origin });
       if (result.error) setError(result.error.message ?? 'Sign-in failed.');
@@ -49,7 +61,11 @@ function Login({ inviteUrl }: { inviteUrl: string | null }) {
 function Index() {
   const { guilds, session } = useApp();
   const navigate = useNavigate();
-  useEffect(() => { if (guilds[0]) navigate({ to: '/servers/$guildId/$view', params: { guildId: guilds[0].id, view: 'rules' }, replace: true }); }, [guilds, navigate]);
+  useEffect(() => {
+    const preferred = new URLSearchParams(location.search).get('installed') === '1' ? guilds.find(guild => guild.installed) : undefined;
+    const guild = preferred ?? guilds[0];
+    if (guild) navigate({ to: '/servers/$guildId/$view', params: { guildId: guild.id, view: 'rules' }, replace: true });
+  }, [guilds, navigate]);
   if (guilds.length) return <main className="center" aria-busy="true">Opening server…</main>;
   return <main className="login"><Brand /><h1>No servers to manage</h1><p>Sign in with an account that has Manage Server permission, or install Jev-Mod.</p>
     {session.inviteUrl && <a className="btn btn-primary" href={session.inviteUrl}>Add to Discord</a>}

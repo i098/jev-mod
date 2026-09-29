@@ -1,8 +1,8 @@
 # Jev-Mod
 
-Open-source Discord moderation, powered by TypeSafe Jev.
+Open-source Discord moderation bot powered by **Jev**, TypeSafe’s decision model.
 
-[Website](https://undeemed.github.io/jev-mod/) · [Dashboard](https://jev-mod.jerry-2c0.workers.dev) · [Add to Discord](https://discord.com/oauth2/authorize?client_id=1554338188708020294&scope=bot%20applications.commands&permissions=1099511704576&integration_type=0) · [Documentation](docs/guide.md)
+[Website](https://jevmod.us/) · [Dashboard](https://app.jevmod.us) · [Add to Discord](https://app.jevmod.us/api/install) · [Documentation](docs/guide.md)
 
 ![Jev-Mod moderation dashboard](docs/images/dashboard.png)
 *Preview with sample data.*
@@ -20,7 +20,7 @@ No bot token or hosting account needed for the hosted service.
 
 | Control | What it does |
 | --- | --- |
-| AI rules | Detect spam, phishing, harassment, hate, threats, and explicit sexual text. |
+| Jev rules | Detect spam, phishing, harassment, hate, threats, and explicit sexual text. |
 | Actions | Log matches, delete messages, or delete and apply a timeout. |
 | Local filters | Block phrases and limit mentions without AI. |
 | Exceptions | Search channels and roles that bypass automatic rules. |
@@ -42,14 +42,12 @@ Follow the [operator guide](docs/guide.md#cloudflare-setup) for credentials, mig
 
 ## Website deployment
 
-The landing page is static HTML/CSS in `docs/`; `.nojekyll` disables Jekyll.
+Landing: **https://jevmod.us** · Dashboard: **https://app.jevmod.us**
 
-1. Merge the site files into `main`.
-2. In [GitHub Pages settings](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), select **Deploy from a branch**, **main**, **/docs**, then **Save**.
-3. After deployment, verify the [public website](https://undeemed.github.io/jev-mod/), its images, favicon, links, and README rendering on GitHub.
-
-GitHub runs its own Pages deployment; no custom CI workflow is needed.
-Keep the dashboard on Cloudflare and its `PUBLIC_URL` unchanged.
+- Landing source: `docs/`; hosting: Cloudflare Workers Static Assets.
+- Deploy with `pnpm exec wrangler deploy --config wrangler.site.jsonc`.
+- For your own site, update its routes, `PUBLIC_URL`, and proxied DNS records.
+- Dashboard uses its own Worker and matching Discord OAuth callback.
 
 ## Local preview
 

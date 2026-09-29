@@ -1,11 +1,57 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Miniflare, Response as RuntimeResponse } from 'miniflare';
+import { unstable_readConfig, unstable_getMiniflareWorkerOptions } from 'wrangler';
 
 const require = createRequire(import.meta.url);
 const { build } = createRequire(require.resolve('wrangler'))('esbuild');
+
+test('Worker asset routing redirects the old origin before serving dashboard assets', async t => {
+  const { Miniflare, convertV4MiniflareOptions } = createRequire(require.resolve('wrangler'))('miniflare');
+  const artifacts = fileURLToPath(new URL('../artifacts/', import.meta.url));
+  await mkdir(artifacts, { recursive: true });
+  const directory = await mkdtemp(join(artifacts, 'asset-routing-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const html = '<!doctype html><title>Synthetic dashboard</title>';
+  const script = 'export const ready = true;';
+  await writeFile(join(directory, 'index.html'), html);
+  await writeFile(join(directory, 'dashboard.js'), script);
+  const config = unstable_readConfig({ config: fileURLToPath(new URL('../wrangler.jsonc', import.meta.url)) });
+  const { workerOptions } = unstable_getMiniflareWorkerOptions({ ...config, configPath: join(directory, 'wrangler.jsonc') }, undefined,
+    { overrides: { assets: { directory }, enableContainers: false } });
+  const bundle = await build({ entryPoints: [config.main], bundle: true, write: false, format: 'esm', platform: 'neutral', keepNames: true,
+    mainFields: ['module', 'main'], conditions: ['workerd', 'worker', 'browser'], external: ['cloudflare:*', 'node:*'] });
+  const runtime = new Miniflare(convertV4MiniflareOptions({ modules: [{ type: 'ESModule', path: 'asset-routing.mjs', contents: bundle.outputFiles[0].text }],
+    compatibilityDate: workerOptions.compatibilityDate, compatibilityFlags: workerOptions.compatibilityFlags,
+    assets: workerOptions.assets, bindings: { PUBLIC_URL: 'https://app.jevmod.us', BOT_ENABLED: 'false' },
+    outboundService: () => { throw Error('Asset routing must not call external services'); } }));
+  t.after(() => runtime.dispose());
+  const assets = [['/', html], ['/servers/200000000000000001/rules?installed=1', html], ['/dashboard.js?rev=1', script]];
+  for (const path of [...assets.map(([path]) => path), '//untrusted.invalid/path?next=%2F%2Felsewhere.invalid',
+    '/api/auth/callback/discord?code=synthetic&state=synthetic', '/healthz']) {
+    for (const method of ['GET', 'POST']) {
+      const response = await runtime.dispatchFetch(`https://old.workers.dev${path}`, {
+        method, redirect: 'manual', headers: { 'Sec-Fetch-Mode': 'navigate' },
+      });
+      assert.equal(response.status, 307, `${method} ${path}`);
+      assert.equal(response.headers.get('location'), `https://app.jevmod.us${path}`);
+      assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.equal(await response.text(), '');
+    }
+  }
+  for (const [path, body] of assets) {
+    const response = await runtime.dispatchFetch(`https://app.jevmod.us${path}`, {
+      redirect: 'manual', headers: { 'Sec-Fetch-Mode': 'navigate' },
+    });
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get('location'), null);
+    assert.equal(await response.text(), body);
+  }
+});
 
 test('Worker provider requests succeed without following credential-bearing redirects', async t => {
   const bundle = await build({ bundle: true, write: false, format: 'esm', platform: 'neutral',
@@ -95,7 +141,7 @@ test('Worker health reports Gateway readiness and fails closed on dependency err
             if (mode === 'non-ok') return Response.json({ connected: true }, { status: 503 });
             return Response.json({ connected: mode === 'connected' });
           } }; } };
-        return worker.fetch(request, { BOT, BOT_ENABLED: mode === 'disabled' ? 'false' : 'true' });
+        return worker.fetch(request, { BOT, BOT_ENABLED: mode === 'disabled' ? 'false' : 'true', PUBLIC_URL: 'https://app.example.com' });
       } };
     ` } });
   const runtime = new Miniflare({ modules: [{ type: 'ESModule', path: 'health.mjs', contents: bundle.outputFiles[0].text }],
@@ -107,5 +153,11 @@ test('Worker health reports Gateway readiness and fails closed on dependency err
     assert.equal(response.status, status);
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.deepEqual(await response.json(), { status: status === 200 ? 'ok' : 'not_ready', bot });
+  }
+  for (const method of ['GET', 'POST']) {
+    const response = await runtime.dispatchFetch('https://old.workers.dev/api/auth/callback/discord?code=synthetic&state=synthetic', { method, redirect: 'manual' });
+    assert.equal(response.status, 307);
+    assert.equal(response.headers.get('location'), 'https://app.example.com/api/auth/callback/discord?code=synthetic&state=synthetic');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
   }
 });
