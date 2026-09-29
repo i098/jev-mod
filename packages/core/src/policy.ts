@@ -38,7 +38,7 @@ export type MessageSnapshot = { id: string; guildId: string; channelId: string; 
 export function defaultSettings(): Settings {
   return {
     mode: 'monitor',
-    rules: catalog.map(rule => ({ id: rule.id, enabled: true, threshold: 0.9, action: 'delete', instructions: rule.description })),
+    rules: catalog.map(rule => ({ id: rule.id, enabled: true, threshold: 0.65, action: 'delete', instructions: rule.description })),
     exemptChannels: [], exemptRoles: [], blockedPhrases: [], mentionLimit: 8,
     localAction: 'delete', timeoutMinutes: 10, logChannelId: '',
   };

@@ -16,15 +16,33 @@ export function TimeoutDuration({ value, onChange, label = 'Shared timeout durat
 export function Rules({ draft, update, guildId, demo, disabled, keyStatus }: {
   draft: Settings; update(value: Settings): void; guildId: string; demo: boolean; disabled: boolean; keyStatus: DashboardData['keyStatus'];
 }) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [threshold, setThreshold] = useState('');
+  const [action, setAction] = useState<Settings['localAction'] | ''>('');
+  const thresholdValid = threshold === '' || (Number.isInteger(Number(threshold)) && Number(threshold) >= 50 && Number(threshold) <= 100);
+  function clearSelection() { setSelected([]); setThreshold(''); setAction(''); }
+  function applySelected() {
+    if (disabled || !selected.length || !thresholdValid || (threshold === '' && !action)) return;
+    update({ ...draft, rules: draft.rules.map(rule => selected.includes(rule.id) ? { ...rule,
+      ...(threshold === '' ? {} : { threshold: Number(threshold) / 100 }), ...(action ? { action } : {}) } : rule) });
+    setThreshold(''); setAction('');
+  }
   return <><header className="page-title"><h1>Auto moderation</h1></header>
     <section className="mode-panel"><Radio size={17} aria-hidden="true" /><h2 className="label-with-help">Moderation mode<HelpTip label="Mode behavior">Monitor records matches. Protect applies actions after messages are posted. Paused disables automatic checks.</HelpTip></h2>
       <select className="select select-sm" aria-label="Moderation mode" disabled={disabled} value={draft.mode} onChange={event => update({ ...draft, mode: event.target.value as Settings['mode'] })}>
         <option value="monitor">Monitor only</option><option value="protect">Protect server</option><option value="off">Paused</option></select></section>
-    <div className="rules-layout"><section><div className="section-heading"><h2>Message rules</h2><span>6 categories · Jev</span></div>
+    <div className="rules-layout"><section><div className="section-heading"><h2>Message rules</h2><button className="btn btn-ghost btn-sm" disabled={disabled} onClick={() => selected.length === draft.rules.length ? clearSelection() : setSelected(draft.rules.map(rule => rule.id))}>{selected.length === draft.rules.length ? 'Clear selection' : 'Select all'}</button></div>
+      {selected.length > 0 && <fieldset disabled={disabled} className="bulk-rules"><div className="bulk-heading"><strong>{selected.length} selected</strong><button className="btn btn-ghost btn-xs" onClick={clearSelection}>Cancel selection</button></div>
+        <div className="bulk-controls"><label className="field">Threshold (%)<input className="input input-sm" type="number" min={50} max={100} step={1} placeholder="Keep current" value={threshold} aria-label="Selected rules threshold" aria-invalid={!thresholdValid} onChange={event => setThreshold(event.target.value)} /></label>
+          <label className="field">When matched<select className="select select-sm" aria-label="Selected rules action" value={action} onChange={event => setAction(event.target.value as typeof action)}><option value="">Keep current</option>{Object.entries(actionLabels).map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
+          <button className="btn btn-primary btn-sm" disabled={!thresholdValid || (threshold === '' && !action)} onClick={applySelected}>Apply to selected</button></div>
+        {!thresholdValid && <p role="alert" className="error">Enter a whole percentage from 50 to 100.</p>}
+        {action === 'timeout' && <p className="fine">Shared timeout: {draft.timeoutMinutes} minutes. Edit it beside any timeout rule after applying.</p>}
+      </fieldset>}
       <fieldset disabled={disabled} className="rule-list">{draft.rules.map((rule, index) => {
         const info = catalog.find(item => item.id === rule.id)!;
         const change = (patch: Partial<typeof rule>) => update({ ...draft, rules: draft.rules.map((item, i) => i === index ? { ...item, ...patch } : item) });
-        return <article className="rule" key={rule.id}><div className="rule-heading"><label><input className="toggle toggle-xs toggle-primary" type="checkbox" checked={rule.enabled} onChange={event => change({ enabled: event.target.checked })} />{info.name}</label></div>
+        return <article className="rule" key={rule.id}><div className="rule-heading"><label><input className="checkbox checkbox-sm checkbox-primary" type="checkbox" aria-label={`Select ${info.name}`} checked={selected.includes(rule.id)} onChange={event => event.target.checked ? setSelected([...selected, rule.id]) : selected.length === 1 ? clearSelection() : setSelected(selected.filter(id => id !== rule.id))} />{info.name}</label><input className="toggle toggle-xs toggle-primary" aria-label={`Enable ${info.name}`} type="checkbox" checked={rule.enabled} onChange={event => change({ enabled: event.target.checked })} /></div>
           <div className="rule-controls"><label><span title="Higher thresholds act on fewer messages.">Match threshold <output>{percentage(rule.threshold)}</output></span><input className="range range-xs range-primary" aria-label={`${info.name} match threshold`} aria-description="Higher thresholds act on fewer messages." type="range" min="50" max="100" step="1" value={rule.threshold * 100} onChange={event => change({ threshold: Number(event.target.value) / 100 })} /></label>
             <label><span>When matched</span><ActionSelect label={`${info.name} action`} value={rule.action} onChange={action => change({ action })} /></label></div>{rule.action === 'timeout' && <TimeoutDuration label={`${info.name} shared timeout · minutes`} value={draft.timeoutMinutes} onChange={timeoutMinutes => update({ ...draft, timeoutMinutes })} />}
           <details><summary>Edit detection instructions</summary><label>Detection instructions<textarea className="textarea" minLength={10} maxLength={1000} value={rule.instructions} onChange={event => change({ instructions: event.target.value })} /></label></details></article>;
