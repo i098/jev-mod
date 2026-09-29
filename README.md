@@ -1,5 +1,7 @@
 # Jev-Mod
 
+<a href="https://jevmod.us/"><img src="docs/favicon.svg" alt="Jev-Mod J shield logo" width="64" height="64"></a>
+
 Open-source Discord moderation bot powered by **Jev**, TypeSafe’s decision model.
 
 [Website](https://jevmod.us/) · [Dashboard](https://app.jevmod.us) · [Add to Discord](https://app.jevmod.us/api/install) · [Documentation](docs/guide.md)

@@ -47,7 +47,7 @@ For a parallel checkout, set an unused `WEB_PORT` and `API_PORT` pair and update
 ## Moderation
 
 - Six editable Jev rules: scams, spam, hate speech, harassment, violent threats, and explicit sexual text.
-- Per-rule threshold and action: log, delete, or delete plus timeout.
+- Per-rule threshold (65% by default) and action: log, delete, or delete plus timeout.
 - Blocked phrases, mention limits, channel exceptions, role exceptions, and a moderator log channel.
 - Monitoring, protection, and paused modes; new servers start in monitoring mode.
 - New messages and edits, with duplicate-case protection and fresh checks before enforcement.
@@ -63,6 +63,9 @@ Jev decisions delete messages after Discord displays them; they do not intercept
 ### Dashboard use
 
 - **Auto moderation** edits the mode, Jev instructions, thresholds, and actions.
+  Check individual rules or choose **Select all**, set a threshold and/or action, then choose **Apply to selected**.
+  **Keep current** preserves that option for each selected rule.
+  Bulk edits stay in the draft until you save; **Discard** restores saved settings.
   Select **Save changes** before using **Test saved rules**; the tester ignores channel and role exceptions and never performs a Discord action.
 - **Server settings** has tabs for exceptions, content filters, actions/logs, the API key, and history.
   Search exception options by name or ID; selected options remain available for removal when outside the search results.
@@ -203,3 +206,11 @@ Dependency licenses remain with their respective packages.
 [Report bugs or request features](https://github.com/undeemed/jev-mod/issues).
 Include reproduction steps and your hosting option; keep API keys, OAuth tokens, and private Discord messages out of public reports.
 For code changes, run `pnpm test` and `pnpm check` before opening a pull request.
+
+### Threshold reset in migration 0003
+
+Migration `0003_rule_threshold_65.sql` sets all existing Jev rule thresholds to 65% once.
+It preserves actions, enabled states, instructions, and other server settings.
+It increments each changed policy version and records the system actor in settings history, so older open drafts cannot overwrite the change.
+Cloudflare operators apply it with the normal D1 migration command; Docker self-hosts apply it on startup.
+Later threshold edits remain configurable and are not reset on restart.

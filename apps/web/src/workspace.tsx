@@ -9,7 +9,7 @@ import { Rules } from './rules';
 import { Settings } from './settings';
 import { Activity } from './activity';
 
-export function Brand() { return <Link to="/" className="brand" aria-label="Jev-Mod home"><ShieldCheck size={33} strokeWidth={1.5} /><span>jev<span>·</span>mod</span></Link>; }
+export function Brand() { return <Link to="/" className="brand" aria-label="Jev-Mod home"><svg width="33" height="33" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#111514" /><path d="M20 7 9 12v9c0 6 5 10 11 13 6-3 11-7 11-13v-9L20 7Z" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M17 15h8v8a5 5 0 0 1-10 0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg><span>jev<span>·</span>mod</span></Link>; }
 export function Dashboard({ guildId, view }: { guildId: string; view: string }) {
   const { session, guilds } = useApp();
   const [data, setData] = useState<DashboardData | null>(null);

@@ -8,6 +8,7 @@ const { Effect } = createRequire(new URL('../packages/core/package.json', import
 
 test('policy validates bounds and requires one of every rule', () => {
   const settings = defaultSettings();
+  assert.ok(settings.rules.every(rule => rule.threshold === 0.65), 'Every new rule defaults to 65%');
   assert.equal(settingsSchema.parse(settings).mode, 'monitor');
   assert.equal(settingsSchema.safeParse({ ...settings, timeoutMinutes: 50000 }).success, false);
   assert.equal(settingsSchema.safeParse({ ...settings, rules: Array(6).fill(settings.rules[0]) }).success, false);
