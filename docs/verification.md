@@ -29,7 +29,9 @@ Discord and TypeSafe transports use test doubles.
 - [Keys, case filters, and migration compatibility](../test/keys-filtering.test.ts) run against both database adapters and cover encrypted server keys, shared tester/bot key selection, deterministic-only checks, paginated search, and preservation of older cases.
 - [Discord actions](../test/discord.test.js), [moderation](../test/moderation.test.js), and [bot lifecycle](../test/bot-lifecycle.test.js) cover current permissions, exemptions, changed revisions including attachment-only edits, duplicate claims, timeout safety, and membership reconciliation.
 - [Jev policy](../test/policy.test.js) includes a stalled-response-body regression that requires the original request signal to be aborted on timeout.
-- [Container proxy and Worker health](../test/container-proxy.test.js) check the private store bridge, reject unrelated containers, and cover disabled, connected, unavailable, and invalid health responses locally.
+- [Worker runtime](../test/container-proxy.test.js) checks the private store bridge, rejects unrelated containers, and covers disabled, connected, unavailable, and invalid health responses locally.
+  Its provider regression runs successful Discord server listing and Jev classification in workerd with an isolated outbound fixture.
+  Redirect cases verify that requests never reach the untrusted destination.
 - [Discord HTTP](../test/discord-http.test.ts) covers the identifying User-Agent, manageable-server filtering, safe failure messages, and status-only error logs with a synthetic transport.
 
 ## Browser fixture
