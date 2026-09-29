@@ -33,15 +33,16 @@ let guildWrites = Promise.resolve();
 discord.onMessage((message: unknown) => { if (initialized) enqueue(message); });
 discord.client.on(Events.Error, () => console.error(JSON.stringify({ event: 'discord_error' })));
 discord.client.on(Events.GuildCreate, guild => {
-  guildWrites = guildWrites.then(async () => { await rpc('registerGuild', [guild.id]); })
-    .catch(() => report('guild_registration_failed', guild.id));
+  guildWrites = guildWrites.then(async () => { if (!stopping) await rpc('registerGuild', [guild.id]); })
+    .catch(async () => { report('guild_registration_failed', guild.id); process.exitCode = 1; await stop(); });
 });
 discord.client.on(Events.GuildDelete, guild => {
-  guildWrites = guildWrites.then(async () => { await rpc('forgetGuild', [guild.id]); })
-    .catch(() => report('guild_cleanup_failed', guild.id));
+  guildWrites = guildWrites.then(async () => { if (!stopping) await rpc('forgetGuild', [guild.id]); })
+    .catch(async () => { report('guild_cleanup_failed', guild.id); process.exitCode = 1; await stop(); });
 });
 discord.client.once(Events.ClientReady, client => {
   guildWrites = guildWrites.then(async () => {
+    if (stopping) return;
     const current = new Set(client.guilds.cache.keys());
     const previous = await rpc<{ id: string }[]>('allGuilds', []);
     for (const guild of previous) if (!current.has(guild.id)) await rpc('forgetGuild', [guild.id]);
@@ -49,7 +50,7 @@ discord.client.once(Events.ClientReady, client => {
     await client.application.commands.create({ name: 'jevmod', description: 'Jev-Mod moderation controls',
       defaultMemberPermissions: PermissionFlagsBits.ManageGuild, contexts: [0],
       options: [{ type: 1, name: 'status', description: 'Show moderation mode and dashboard' }, { type: 1, name: 'pause', description: 'Pause moderation for this server' }] });
-    initialized = true;
+    initialized = !stopping;
   }).catch(async () => { console.error(JSON.stringify({ event: 'bot_initialization_failed' })); process.exitCode = 1; await stop(); });
 });
 discord.client.on(Events.InteractionCreate, async interaction => {

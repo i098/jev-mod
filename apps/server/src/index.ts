@@ -8,6 +8,8 @@ import { evaluateMessage } from '@jev-mod/core/jev.ts';
 import { createDashboard, listDiscordGuilds, type BotApi, type User } from './app.ts';
 import { storeBridge } from './bridge.ts';
 
+export { ContainerProxy } from '@cloudflare/containers';
+
 export interface Env extends AuthEnv {
   ASSETS: Fetcher;
   BOT: DurableObjectNamespace<BotContainer>;

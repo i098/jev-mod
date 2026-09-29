@@ -120,6 +120,10 @@ async function run() {
   assert(cursors.join(',') === '51,56,6', 'Pagination must restart from refreshed cursor');
 
   await view('rules', 'Auto moderation');
+  const signOut = button('Sign out');
+  const bounds = signOut.getBoundingClientRect();
+  assert(signOut.checkVisibility() && bounds.width > 0 && bounds.height > 0, 'Sign out must stay visible at this viewport width');
+  assert(bounds.left >= 0 && bounds.right <= innerWidth, 'Sign out must stay inside the viewport');
   changeSelect(document.querySelector<HTMLSelectElement>('[aria-label="Moderation mode"]')!, 'protect'); await settle();
   button('Sign out').click(); await settle();
   assert(confirmations === 1 && signOuts === 0, 'Cancel must retain session without a sign-out request');

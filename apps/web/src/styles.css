@@ -167,7 +167,9 @@ legend { font-size: 12px; margin-bottom: 10px; }
 @media (max-width: 760px) {
   .shell { grid-template-columns: minmax(0,1fr); }
   .sidebar { position: static; height: auto; padding: 16px; border-right: 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
-  .brand { font-size: 19px; } .brand-subtitle, .server-label, .sidebar-bottom { display: none; }
+  .brand { font-size: 19px; } .brand-subtitle, .server-label, .sidebar-bottom .connection { display: none; }
+  .sidebar-bottom { grid-column: 1 / -1; padding-top: 0; }
+  .user-row button { min-height: 32px; }
   .nav { grid-column: 1 / -1; flex-direction: row; margin: 0; gap: 4px; }
   .nav a { flex: 1; justify-content: center; gap: 7px; font-size: 11px; padding: 9px 6px; min-height: 36px; }
   .nav .nav-count { display: none; }
