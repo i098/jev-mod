@@ -3,6 +3,8 @@ import { messageHash } from '@jev-mod/core/moderation.js';
 
 const MANAGE = PermissionFlagsBits.ManageGuild;
 const messageRevision = message => message.editedTimestamp == null ? 'created' : String(message.editedTimestamp);
+const matchesRevision = (message, revision, hash) => !message.partial && messageRevision(message) === revision && messageHash(message.content) === hash;
+const messageChanged = (before, after) => before.partial || !matchesRevision(after, messageRevision(before), messageHash(before.content));
 export function createDiscord(token) {
   const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -13,7 +15,7 @@ export function createDiscord(token) {
   });
   const watching = new Map();
   client.on(Events.MessageUpdate, (before, after) => {
-    if (!after.partial && before.content === after.content) return;
+    if (!messageChanged(before, after)) return;
     for (const watch of watching.get(after.id) ?? []) watch.changed = true;
   });
   const ready = () => client.isReady() && client.ws.shards.size > 0 && client.ws.shards.every(shard => shard.status === Status.Ready);
@@ -33,7 +35,7 @@ export function createDiscord(token) {
         if (message.guildId && !message.author?.bot) callback(message);
       });
       client.on(Events.MessageUpdate, (before, after) => {
-        if (after.guildId && !after.author?.bot && (after.partial || before.content !== after.content)) callback(after);
+        if (after.guildId && !after.author?.bot && messageChanged(before, after)) callback(after);
       });
     },
     async snapshot(input) {
@@ -103,7 +105,7 @@ export function createDiscord(token) {
       let message;
       try { message = await channel.messages.fetch({ message: messageId, force: true, cache: false }); }
       catch (error) { if (error.code === 10008) return 'already_gone'; throw error; }
-      if (messageRevision(message) !== revision || messageHash(message.content) !== hash) return 'message_changed';
+      if (!matchesRevision(message, revision, hash)) return 'message_changed';
       let member;
       try { member = await guild.members.fetch({ user: message.author.id, force: true }); }
       catch { return 'member_check_failed'; }
@@ -112,7 +114,7 @@ export function createDiscord(token) {
       // Refresh after the member lookup; an earlier uncached snapshot does not track edits.
       try { message = await channel.messages.fetch({ message: messageId, force: true, cache: false }); }
       catch (error) { if (error.code === 10008) return 'already_gone'; throw error; }
-      if (messageRevision(message) !== revision || messageHash(message.content) !== hash) return 'message_changed';
+      if (!matchesRevision(message, revision, hash)) return 'message_changed';
       if (!await isCurrent()) return 'policy_changed';
       if (watch.changed) return 'message_changed';
       if (!ready()) return 'delete_failed';

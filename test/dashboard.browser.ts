@@ -27,9 +27,9 @@ const data: DashboardData = {
     { id: channelId, name: 'general', sendable: true }, { id: forumId, name: 'forum', sendable: false },
     ...Array.from({ length: 2000 }, (_, index) => ({ id: String(210000000000000000n + BigInt(index)), name: `sample-project-${String(index).padStart(4, '0')}`, sendable: true })),
   ], roles: Array.from({ length: 2000 }, (_, index) => ({ id: String(310000000000000000n + BigInt(index)), name: `Sample team ${String(index).padStart(4, '0')}` })), permissions: { manageMessages: true, moderateMembers: true } },
-  cases: cases(100, 50), stats: { total: 100, removed: 1, review: 99 }, audit: [], health: { connected: false }, demo: false, keyStatus: { source: 'missing' },
+  stats: { total: 100, removed: 1, review: 99 }, audit: [], health: { connected: false }, demo: false, keyStatus: { source: 'missing' },
 };
-const otherData: DashboardData = { ...data, settings: defaultSettings(), metadata: { ...data.metadata, id: secondGuildId, name: 'Second sample server' }, cases: [], stats: { total: 0, removed: 0, review: 0 } };
+const otherData: DashboardData = { ...data, settings: defaultSettings(), metadata: { ...data.metadata, id: secondGuildId, name: 'Second sample server' }, stats: { total: 0, removed: 0, review: 0 } };
 let allCases = cases(100, 100);
 let saves = 0;
 let signOuts = 0;
@@ -59,7 +59,7 @@ window.fetch = async (input, options) => {
     saves++; data.settings = settings; data.version++;
     return Response.json({ settings, version: data.version });
   }
-  if (url.pathname === `/api/guilds/${guildId}/key`) {
+  if (url.pathname === `/api/guilds/${guildId}/key` && ['PUT', 'DELETE'].includes(method)) {
     if (method === 'PUT') {
       if (failKeySave) return Response.json({ error: 'Sample key save failure' }, { status: 500 });
       assert(JSON.parse(String(options?.body)).key.startsWith('sample-only-'), 'Only sample keys are submitted');
@@ -220,7 +220,7 @@ async function run() {
   assert(region.scrollHeight > region.clientHeight && getComputedStyle(region).overflowY === 'auto', 'Cases scroll inside bounded region');
   assert(getComputedStyle(document.querySelector('th')!).position === 'sticky', 'Case headings stay visible during scrolling');
   button('Load older cases').click(); await until(() => pending);
-  allCases = cases(105, 105); data.cases = allCases.slice(0, 50); data.stats = { total: 105, removed: 1, review: 104 };
+  allCases = cases(105, 105); data.stats = { total: 105, removed: 1, review: 104 };
   button('Refresh').click();
   await until(() => document.querySelector('.case-link')?.textContent?.includes('#105'));
   await until(() => pending?.signal.aborted);

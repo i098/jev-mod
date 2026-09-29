@@ -141,7 +141,18 @@ for (const kind of ['D1', 'SQLite'] as const) {
       assert.equal(budgets.filter(value => value === `jev:guild:${guild}`).length, 2);
       assert.equal(budgets.filter(value => value === 'jev:global').length, 2);
     };
-    assert.deepEqual(await (await request(`${path}/key`)).json(), { source: 'operator' });
+    const caseReads = t.mock.method(store, 'listCases');
+    const dashboardStatus = async () => {
+      const response = await request(path);
+      assert.equal(response.status, 200);
+      const data = await response.json() as Record<string, unknown>;
+      assert.equal(Object.hasOwn(data, 'cases'), false);
+      assertNoKeys(data);
+      return data.keyStatus;
+    };
+    assert.deepEqual(await dashboardStatus(), { source: 'operator' });
+    assert.equal(caseReads.mock.calls.length, 0);
+    assert.equal((await request(`${path}/key`)).status, 404);
     for (const key of [serverKey, replacementKey]) {
       const response = await request(`${path}/key`, 'PUT', { key });
       assert.equal(response.status, 200);
@@ -150,6 +161,7 @@ for (const kind of ['D1', 'SQLite'] as const) {
       assert.notEqual(ciphertext, key);
       assert.equal(await decryptKey(guild, ciphertext, secret), key);
       assert.equal(await store.getTypeSafeKey(other), undefined);
+      assert.deepEqual(await dashboardStatus(), { source: 'server' });
       await classifyBoth(key);
     }
     const first = await encryptKey(guild, serverKey, secret);
@@ -160,14 +172,18 @@ for (const kind of ['D1', 'SQLite'] as const) {
     await assert.rejects(decryptKey(guild, first, '22'.repeat(32)), /KEY_DECRYPTION_FAILED/);
     await store.addCase(sampleCase(1));
     assert.deepEqual(await store.stats(guild), { total: 1, removed: 0, review: 1 });
-    for (const suffix of ['', '/key', '/cases']) {
-      const response = await request(`${path}${suffix}`);
-      assert.equal(response.status, 200);
-      assertNoKeys(await response.json());
-    }
+    assert.deepEqual(await dashboardStatus(), { source: 'server' });
+    assert.equal(caseReads.mock.calls.length, 0);
+    const response = await request(`${path}/cases`);
+    assert.equal(response.status, 200);
+    const page = await response.json() as { content: string }[];
+    assert.equal(page.length, 1);
+    assert.equal(page[0].content, 'sample evidence');
+    assertNoKeys(page);
+    assert.equal(caseReads.mock.calls.length, 1);
     assertNoKeys(await store.audit(guild));
     assertNoKeys(await store.listCases(guild));
-    for (const method of ['GET', 'PUT', 'DELETE']) {
+    for (const method of ['PUT', 'DELETE']) {
       const denied = await request(`/api/guilds/${other}/key`, method, { key: serverKey });
       assert.equal(denied.status, 403);
       assertNoKeys(await denied.json());
@@ -180,7 +196,7 @@ for (const kind of ['D1', 'SQLite'] as const) {
     assert.equal(await store.getTypeSafeKey(guild), undefined);
     await classifyBoth(operatorKey);
     env.TYPESAFE_API_KEY = '';
-    assert.deepEqual(await (await request(`${path}/key`)).json(), { source: 'missing' });
+    assert.deepEqual(await dashboardStatus(), { source: 'missing' });
     const missing = await request(`${path}/test`, 'POST', { content: 'sample evidence' });
     assert.equal(missing.status, 409);
     const missingBody = await missing.json() as { error: string };

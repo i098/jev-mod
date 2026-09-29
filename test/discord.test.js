@@ -5,7 +5,7 @@ import { createDiscord } from '../apps/bot/src/discord.js';
 import { messageHash } from '../packages/core/src/moderation.js';
 import { defaultSettings } from '../packages/core/src/policy.ts';
 
-function setup({ memberFailure = false, editDuringLookup = false, pauseDuringDelete = false, editDuringPolicy = false, policyFailureAt = 0, disconnectDuringPolicy = false, revisionDuringLookup = false } = {}) {
+function setup({ memberFailure = false, editDuringLookup = false, pauseDuringDelete = false, editDuringPolicy = false, policyFailureAt = 0, disconnectDuringPolicy = false, revisionDuringLookup = false, attachmentEditDuringPolicy = false } = {}) {
   const adapter = createDiscord('not-a-live-token');
   let content = 'scam';
   let current = true;
@@ -32,6 +32,11 @@ function setup({ memberFailure = false, editDuringLookup = false, pauseDuringDel
       if (++policyChecks === policyFailureAt) throw new Error('policy unavailable');
       if (disconnectDuringPolicy) adapter.client.ws.shards.get(0).status = Status.Resuming;
       if (editDuringPolicy) adapter.client.emit(Events.MessageUpdate, { content: 'scam' }, { id: 'message', content: 'clean' });
+      if (attachmentEditDuringPolicy && editedTimestamp === null) {
+        const before = { id: 'message', guildId: 'guild', content, editedTimestamp, author: { bot: false } };
+        editedTimestamp = 1000;
+        adapter.client.emit(Events.MessageUpdate, before, { ...before, editedTimestamp, attachments: [] });
+      }
       return current;
     },
   } };
@@ -151,6 +156,42 @@ test('snapshot records the actual Discord revision independently of message text
   assert.equal((await adapter.snapshot(message)).revision, 'created');
   message.editedTimestamp = 1000;
   assert.equal((await adapter.snapshot(message)).revision, '1000');
+});
+
+test('attachment-only revisions are admitted and invalidate in-flight enforcement', async t => {
+  const { adapter, request, counts } = setup({ attachmentEditDuringPolicy: true });
+  t.after(() => adapter.stop());
+  const admitted = [];
+  adapter.onMessage(message => admitted.push(message));
+  assert.equal(await adapter.enforce(request), 'message_changed');
+  assert.deepEqual(counts(), { deletes: 0, timeouts: 0 });
+  assert.equal(admitted.length, 1);
+  assert.equal(admitted[0].content, 'scam');
+  assert.equal(admitted[0].editedTimestamp, 1000);
+  assert.equal(await adapter.enforce({ ...request, revision: String(admitted[0].editedTimestamp) }), 'deleted_timed_out');
+  assert.deepEqual(counts(), { deletes: 1, timeouts: 1 });
+});
+
+test('update admission ignores unchanged revisions and keeps partial and text edits', async t => {
+  const { adapter, request, counts } = setup();
+  t.after(() => adapter.stop());
+  const admitted = [];
+  adapter.onMessage(message => admitted.push(message));
+  const before = { id: 'message', guildId: 'guild', content: 'scam', editedTimestamp: null, author: { bot: false } };
+  const after = { ...before, pinned: true };
+  assert.equal(await adapter.enforce({ ...request, isCurrent: async () => {
+    adapter.client.emit(Events.MessageUpdate, before, after); return true;
+  } }), 'deleted_timed_out');
+  assert.equal(admitted.length, 0);
+  assert.deepEqual(counts(), { deletes: 1, timeouts: 1 });
+  const textEdit = { ...before, content: 'new text' };
+  const partial = { ...before, partial: true, content: null };
+  adapter.client.emit(Events.MessageUpdate, before, textEdit);
+  adapter.client.emit(Events.MessageUpdate, before, partial);
+  adapter.client.emit(Events.MessageUpdate, partial, before);
+  adapter.client.emit(Events.MessageUpdate, before, { ...textEdit, author: { bot: true } });
+  adapter.client.emit(Events.MessageUpdate, before, { ...textEdit, guildId: null });
+  assert.deepEqual(admitted, [textEdit, partial, before]);
 });
 
 test('authorization ignores stale SDK roles overwritten by an older metadata response', async t => {

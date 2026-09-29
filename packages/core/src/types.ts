@@ -15,7 +15,7 @@ export type Decision = { model: string | null; matches: Match[]; scores: Match[]
 export type KeyStatus = { source: 'server' | 'operator' | 'missing' };
 export type CaseQuery = { before?: string; search?: string; outcome?: string; rule?: string; channel?: string; from?: number; to?: number };
 export type DashboardData = PolicyRecord & {
-  metadata: GuildMetadata; cases: CaseRecord[];
+  metadata: GuildMetadata;
   stats: { total: number; removed: number; review: number };
   audit: { id: number; actor_id: string; event: string; created_at: number }[];
   health: { connected: boolean }; keyStatus: KeyStatus; demo: boolean;

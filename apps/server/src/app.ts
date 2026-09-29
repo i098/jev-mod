@@ -86,10 +86,10 @@ export function createDashboard(services: Services) {
   // Hono's wildcard middleware includes both the base path and its descendants.
   app.get('/api/guilds/:guildId', async c => {
     const guildId = c.get('guildId');
-    const [policy, metadata, cases, stats, audit, health, keyStatus] = await Promise.all([
-      store.getSettings(guildId), bot.metadata(guildId), store.listCases(guildId), store.stats(guildId), store.audit(guildId), bot.health(), services.keyStatus(guildId),
+    const [policy, metadata, stats, audit, health, keyStatus] = await Promise.all([
+      store.getSettings(guildId), bot.metadata(guildId), store.stats(guildId), store.audit(guildId), bot.health(), services.keyStatus(guildId),
     ]);
-    return c.json({ ...policy, metadata, cases, stats, audit, health, keyStatus, demo: services.demo });
+    return c.json({ ...policy, metadata, stats, audit, health, keyStatus, demo: services.demo });
   });
   app.put('/api/guilds/:guildId/settings', async c => {
     const body = z.object({ settings: settingsSchema, version: z.number().int().nonnegative() }).strict().parse(await c.req.json());
@@ -107,7 +107,6 @@ export function createDashboard(services: Services) {
     return c.json({ ...result, action: !result.matches.length || settings.mode === 'off' ? 'allow'
       : settings.mode === 'monitor' ? 'monitor' : strongestAction(result.matches) });
   });
-  app.get('/api/guilds/:guildId/key', async c => c.json(await services.keyStatus(c.get('guildId'))));
   app.put('/api/guilds/:guildId/key', async c => {
     if (services.demo) throw problem('API keys are disabled in preview.', 409);
     const { key } = z.object({ key: z.string().trim().min(10).max(512) }).strict().parse(await c.req.json());
