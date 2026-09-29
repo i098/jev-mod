@@ -17,7 +17,7 @@ export function evaluateMessage(content: string, rules: Rule[], config: { key: s
     const data = yield* Effect.tryPromise({
       try: async signal => {
         const response = await (config.fetcher ?? fetch)('https://api.typesafe.ai/v1/systemone', {
-        method: 'POST', redirect: 'error', signal,
+        method: 'POST', redirect: 'manual', signal,
         headers: { Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'jev-1.13.0', state: { message: content },
           questions: Object.fromEntries(enabled.map(rule => [rule.id, { type: 'noul', instructions: {

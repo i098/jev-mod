@@ -2,10 +2,55 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { Miniflare } from 'miniflare';
+import { Miniflare, Response as RuntimeResponse } from 'miniflare';
 
 const require = createRequire(import.meta.url);
 const { build } = createRequire(require.resolve('wrangler'))('esbuild');
+
+test('Worker provider requests succeed without following credential-bearing redirects', async t => {
+  const bundle = await build({ bundle: true, write: false, format: 'esm', platform: 'neutral',
+    mainFields: ['module', 'main'], conditions: ['workerd', 'worker', 'browser'], external: ['cloudflare:*', 'node:*'],
+    stdin: { resolveDir: fileURLToPath(new URL('../packages/core', import.meta.url)), contents: `
+      import { Effect } from 'effect';
+      import { listDiscordGuilds } from '../../apps/server/src/app.ts';
+      import { evaluateMessage } from './src/jev.ts';
+      import { defaultSettings } from './src/policy.ts';
+      export default { async fetch(request) {
+        try {
+          if (new URL(request.url).pathname === '/discord') return Response.json(await listDiscordGuilds('synthetic-key'));
+          const result = await Effect.runPromise(Effect.either(evaluateMessage('sample', defaultSettings().rules.slice(0, 1), { key: 'synthetic-key' })));
+          return Response.json(result);
+        } catch (error) { return Response.json({ error: error.message }, { status: 503 }); }
+      } };
+    ` } });
+  let status = 200;
+  const requests = [];
+  const runtime = new Miniflare({ modules: true, script: bundle.outputFiles[0].text,
+    compatibilityDate: '2026-08-06', compatibilityFlags: ['nodejs_compat'],
+    outboundService: request => {
+      requests.push(new URL(request.url).hostname);
+      assert.equal(request.headers.get('authorization'), 'Bearer synthetic-key');
+      if (status !== 200) return new RuntimeResponse('', { status, headers: { Location: 'https://untrusted.invalid/' } });
+      return RuntimeResponse.json(new URL(request.url).hostname === 'discord.com'
+        ? [{ id: '100000000000000001', name: 'Sample server', permissions: '32' }]
+        : { model: 'fixture', answers: { scams: { type: 'noul', noul: 0.95 } } });
+    } });
+  t.after(() => runtime.dispose());
+  const guilds = await runtime.dispatchFetch('https://example.invalid/discord');
+  assert.equal(guilds.status, 200, await guilds.clone().text());
+  assert.equal((await guilds.json())[0].id, '100000000000000001');
+  const decision = await (await runtime.dispatchFetch('https://example.invalid/jev')).json();
+  assert.equal(decision._tag, 'Right');
+  assert.equal(decision.right.matches.length, 1);
+  for (status of [301, 302, 303, 307, 308]) {
+    requests.length = 0;
+    assert.equal((await runtime.dispatchFetch('https://example.invalid/discord')).status, 503);
+    const rejected = await (await runtime.dispatchFetch('https://example.invalid/jev')).json();
+    assert.equal(rejected._tag, 'Left');
+    assert.equal(rejected.left.code, `JEV_HTTP_${status}`);
+    assert.deepEqual(requests, ['discord.com', 'api.typesafe.ai']);
+  }
+});
 
 test('exported ContainerProxy routes the private store bridge and rejects other containers', async t => {
   const bundle = await build({ bundle: true, write: false, format: 'esm', platform: 'neutral', keepNames: true,
