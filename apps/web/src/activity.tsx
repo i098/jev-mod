@@ -9,7 +9,11 @@ export function Activity({ data, refresh, guildId, notify }: { data: DashboardDa
   const [hasMore, setHasMore] = useState(data.cases.length === 50);
   const [selected, setSelected] = useState<CaseRecord | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setOlder([]); setHasMore(data.cases.length === 50); }, [data]);
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => {
+    setOlder([]); setHasMore(data.cases.length === 50); setBusy(false);
+    return () => controller.current?.abort();
+  }, [data, guildId]);
   const cases = [...data.cases, ...older];
   const rows = filter === 'review' ? cases.filter(reviewable) : cases;
   return <><header className="page-title"><div className="eyebrow">Every decision, accounted for</div><h1>Moderation activity</h1><p>Review flagged messages and see what Jev-Mod did. Evidence is retained for 30 days.</p><button className="btn btn-sm refresh" onClick={() => refresh().catch(error => notify(error.message))}>Refresh</button></header>
@@ -18,10 +22,15 @@ export function Activity({ data, refresh, guildId, notify }: { data: DashboardDa
     {rows.length ? <div className="table-wrap"><table className="table"><thead><tr><th>Message / rule</th><th>Match</th><th>Outcome</th><th>Time</th></tr></thead><tbody>{rows.map(item => <tr key={item.id}><td><button className="case-link" onClick={() => setSelected(item)}>{item.matches.map(match => match.name).join(', ')} <span>· #{item.id}</span></button><p className="excerpt">{item.content}</p></td><td className="mono">{percentage(Math.max(...item.matches.map(match => match.probability), 0))}</td><td><Outcome value={item.outcome} /></td><td className="muted">{date(item.created_at)}</td></tr>)}</tbody></table></div>
       : <section className="empty"><h2>No cases here</h2><p>{filter === 'review' ? 'No loaded cases need review.' : 'Matches will appear when Jev-Mod observes unwanted messages.'}</p></section>}
     {hasMore && <button className="btn btn-ghost btn-sm section-foot" disabled={busy} onClick={async () => {
+      controller.current?.abort();
+      const current = new AbortController();
+      controller.current = current;
       setBusy(true);
-      try { const result = await api<CaseRecord[]>(`/api/guilds/${guildId}/cases?before=${cases.at(-1)!.id}`); setOlder(previous => [...previous, ...result]); setHasMore(result.length === 50); }
-      catch (error) { notify((error as Error).message); }
-      finally { setBusy(false); }
+      try {
+        const result = await api<CaseRecord[]>(`/api/guilds/${guildId}/cases?before=${cases.at(-1)!.id}`, { signal: current.signal });
+        if (!current.signal.aborted) { setOlder(previous => [...previous, ...result]); setHasMore(result.length === 50); }
+      } catch (error) { if (!current.signal.aborted) notify((error as Error).message); }
+      finally { if (!current.signal.aborted) setBusy(false); }
     }}>{busy ? 'Loading…' : 'Load older cases'}</button>}
     <p className="fine section-foot">{data.demo ? 'All messages and probabilities are sample data, not Jev results.' : 'Allowed message text is not stored. Failed actions remain visible in the case record.'}</p>
     {selected && <CaseDialog item={selected} guildId={guildId} demo={data.demo} close={() => setSelected(null)} complete={async message => { setSelected(null); notify(message); await refresh(); }} />}</>;

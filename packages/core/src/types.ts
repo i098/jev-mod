@@ -9,7 +9,7 @@ export type NewCase = { guildId: string; channelId: string; messageId: string; a
   messageHash: string; policyVersion: number; content: string; matches: Match[]; model: string | null;
   requestedAction: string; outcome: string };
 export type Guild = { id: string; name: string; installed: boolean; inviteUrl: string | null };
-export type GuildMetadata = { id: string; name: string; channels: { id: string; name: string }[];
+export type GuildMetadata = { id: string; name: string; channels: { id: string; name: string; sendable: boolean }[];
   roles: { id: string; name: string }[]; permissions: { manageMessages: boolean; moderateMembers: boolean } };
 export type Decision = { model: string | null; matches: Match[]; scores: Match[] };
 export type DashboardData = PolicyRecord & {

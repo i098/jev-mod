@@ -58,7 +58,8 @@ export function createDiscord(token) {
       const [channels, roles, me] = await Promise.all([guild.channels.fetch(), guild.roles.fetch(), guild.members.fetchMe()]);
       return {
         id: guild.id, name: guild.name,
-        channels: [...channels.values()].filter(channel => channel?.isTextBased() && !channel.isDMBased()).map(channel => ({ id: channel.id, name: channel.name })),
+        channels: [...channels.values()].filter(channel => channel && (channel.isTextBased() || channel.isThreadOnly()) && !channel.isDMBased())
+          .map(channel => ({ id: channel.id, name: channel.name, sendable: channel.isSendable() })),
         roles: [...roles.values()].filter(role => role.id !== guild.id && !role.managed).map(role => ({ id: role.id, name: role.name })),
         permissions: { manageMessages: me.permissions.has(PermissionFlagsBits.ManageMessages),
           moderateMembers: me.permissions.has(PermissionFlagsBits.ModerateMembers) },
@@ -108,13 +109,14 @@ export function createDiscord(token) {
       if (!message.deletable) return 'missing_permission';
       await message.delete();
       if (action !== 'timeout') return 'deleted';
-      if (!await isCurrent()) return 'deleted_timeout_skipped';
-      try { member = await guild.members.fetch({ user: message.author.id, force: true }); }
-      catch { return 'deleted_timeout_failed'; }
-      if (member.roles.cache.some(role => exemptRoles.includes(role.id)) || !await isCurrent()) return 'deleted_timeout_skipped';
-      if (!member.moderatable) return 'deleted_timeout_failed';
-      try { await member.timeout(timeoutMinutes * 60000, reason.slice(0, 500)); return 'deleted_timed_out'; }
-      catch { return 'deleted_timeout_failed'; }
+      try {
+        if (!await isCurrent()) return 'deleted_timeout_skipped';
+        member = await guild.members.fetch({ user: message.author.id, force: true });
+        if (member.roles.cache.some(role => exemptRoles.includes(role.id)) || !await isCurrent()) return 'deleted_timeout_skipped';
+        if (!member.moderatable) return 'deleted_timeout_failed';
+        await member.timeout(timeoutMinutes * 60000, reason.slice(0, 500));
+        return 'deleted_timed_out';
+      } catch { return 'deleted_timeout_failed'; }
       } finally {
         watchers.delete(watch);
         if (!watchers.size) watching.delete(messageId);

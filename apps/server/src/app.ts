@@ -91,7 +91,8 @@ export function createDashboard(services: Services) {
     const { content } = z.object({ content: z.string().trim().min(1).max(4000) }).strict().parse(await c.req.json());
     const { settings } = await store.getSettings(c.get('guildId'));
     const result = await services.classify(content, settings.rules);
-    const mentions = new Set(content.match(/<@!?\d+>|<@&\d+>|@everyone|@here/g) ?? []);
+    const mentions = new Set([...content.matchAll(/<@!?(\d{17,20})>|<@&(\d{17,20})>|@everyone|@here/g)]
+      .map(([, user, role]) => user ? `user:${user}` : role ? `role:${role}` : 'everyone'));
     result.matches.push(...localMatches({ content, mentionCount: mentions.size }, settings));
     return c.json({ ...result, action: !result.matches.length || settings.mode === 'off' ? 'allow'
       : settings.mode === 'monitor' ? 'monitor' : strongestAction(result.matches) });

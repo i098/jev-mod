@@ -75,6 +75,20 @@ test('D1 and HTTP contracts enforce tenant isolation, CAS, audit atomicity, budg
   await store.cleanup();
   assert.equal((await store.listCases(guild)).length, 0);
   assert.equal((await store.getSettings(guild)).version, 2);
+  await store.saveSettings(guild, { ...protectedSettings, mentionLimit: 2,
+    rules: protectedSettings.rules.map(rule => ({ ...rule, enabled: false })) }, 2, user.discordId);
+  for (const [content, action] of [
+    ['<@100000000000000001> <@!100000000000000001>', 'allow'],
+    ['@here @everyone @here', 'allow'],
+    ['<@&100000000000000001> <@&100000000000000001>', 'allow'],
+    ['<@100000000000000001> <@100000000000000002>', 'delete'],
+    ['<@100000000000000001> <@&100000000000000002>', 'delete'],
+    ['@here <@!100000000000000001>', 'delete'],
+  ]) {
+    const response = await app.request(`${path}/test`, { method: 'POST', headers, body: JSON.stringify({ content }) });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).action, action, content);
+  }
   await store.forgetGuild(guild);
   assert.equal((await store.listCases(guild)).length, 0);
   assert.equal((await store.audit(guild)).length, 0);

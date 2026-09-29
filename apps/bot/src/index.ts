@@ -29,17 +29,19 @@ const moderate = createModerator({ store, discord, classify: async (...args: Par
 }, report });
 const enqueue = createQueue(async (message: unknown) => moderate(await discord.snapshot(message)), { onError: report });
 let initialized = false;
+let guildWrites = Promise.resolve();
 discord.onMessage((message: unknown) => { if (initialized) enqueue(message); });
 discord.client.on(Events.Error, () => console.error(JSON.stringify({ event: 'discord_error' })));
-discord.client.on(Events.GuildCreate, async guild => {
-  try { await rpc('registerGuild', [guild.id]); }
-  catch { report('guild_registration_failed', guild.id); }
+discord.client.on(Events.GuildCreate, guild => {
+  guildWrites = guildWrites.then(async () => { await rpc('registerGuild', [guild.id]); })
+    .catch(() => report('guild_registration_failed', guild.id));
 });
 discord.client.on(Events.GuildDelete, guild => {
-  rpc('forgetGuild', [guild.id]).catch(() => report('guild_cleanup_failed', guild.id));
+  guildWrites = guildWrites.then(async () => { await rpc('forgetGuild', [guild.id]); })
+    .catch(() => report('guild_cleanup_failed', guild.id));
 });
-discord.client.once(Events.ClientReady, async client => {
-  try {
+discord.client.once(Events.ClientReady, client => {
+  guildWrites = guildWrites.then(async () => {
     const current = new Set(client.guilds.cache.keys());
     const previous = await rpc<{ id: string }[]>('allGuilds', []);
     for (const guild of previous) if (!current.has(guild.id)) await rpc('forgetGuild', [guild.id]);
@@ -48,7 +50,7 @@ discord.client.once(Events.ClientReady, async client => {
       defaultMemberPermissions: PermissionFlagsBits.ManageGuild, contexts: [0],
       options: [{ type: 1, name: 'status', description: 'Show moderation mode and dashboard' }, { type: 1, name: 'pause', description: 'Pause moderation for this server' }] });
     initialized = true;
-  } catch { console.error(JSON.stringify({ event: 'bot_initialization_failed' })); process.exitCode = 1; await stop(); }
+  }).catch(async () => { console.error(JSON.stringify({ event: 'bot_initialization_failed' })); process.exitCode = 1; await stop(); });
 });
 discord.client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand() || interaction.commandName !== 'jevmod' || !interaction.guildId) return;

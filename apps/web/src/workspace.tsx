@@ -25,9 +25,9 @@ export function Dashboard({ guildId, view }: { guildId: string; view: string }) 
   const dirtyRef = useRef(false);
   dirtyRef.current = dirty;
   useBlocker({
-    enableBeforeUnload: dirty,
+    enableBeforeUnload: () => dirtyRef.current,
     shouldBlockFn: ({ next }) => {
-      if (!dirty || ('guildId' in next.params && next.params.guildId === guildId)) return false;
+      if (!dirtyRef.current || ('guildId' in next.params && next.params.guildId === guildId)) return false;
       return !confirm('Discard unsaved changes and leave this server?');
     },
   });
@@ -64,13 +64,23 @@ export function Dashboard({ guildId, view }: { guildId: string; view: string }) 
       else setToast((error as Error).message);
     } finally { if (alive.current) setBusy(false); }
   }
+  async function signOut() {
+    if (dirtyRef.current && !confirm('Discard unsaved changes and sign out?')) return;
+    setBusy(true);
+    try {
+      const result = await authClient.signOut();
+      if (result.error) throw new Error(result.error.message ?? 'Sign-out failed.');
+      dirtyRef.current = false; setDraft(null);
+      location.assign('/');
+    } catch (error) { setToast((error as Error).message); setBusy(false); }
+  }
   return <div className="shell"><a className="skip" href="#main">Skip to content</a><aside className="sidebar"><Brand /><p className="brand-subtitle">Community, with boundaries.</p>
     <div><label htmlFor="server" className="server-label">YOUR SERVER</label><select id="server" className="select server-select" aria-label="Select server" value={guildId} disabled={busy} onChange={event => {
       navigate({ to: '/servers/$guildId/$view', params: { guildId: event.target.value, view } });
     }}>{guilds.map(item => <option key={item.id} value={item.id}>{item.name}{item.installed ? '' : ' · Add bot'}</option>)}</select></div>
     <nav aria-label="Dashboard" className="menu nav">{navigation.map(item => <Link key={item.view} to="/servers/$guildId/$view" params={{ guildId, view: item.view }} className={view === item.view ? 'active' : ''} aria-current={view === item.view ? 'page' : undefined} onClick={event => { if (busy) event.preventDefault(); }}><item.icon size={17} strokeWidth={1.5} />{item.label}{item.view === 'activity' && <span className="badge badge-sm nav-count">{data?.stats.review ?? 0}</span>}</Link>)}</nav>
     <div className="sidebar-bottom"><div className="connection"><span className={`status status-xs ${data?.health.connected ? 'status-success' : ''}`} />{session.demo ? 'Preview · not connected' : data?.health.connected ? 'Discord connected' : 'Discord not connected'}</div>
-      <div className="user-row"><div className="avatar placeholder"><div>{session.user?.name.slice(0, 2).toUpperCase()}</div></div><div><p>{session.user?.name}</p><button disabled={session.demo || busy} onClick={async () => { await authClient.signOut(); location.assign('/'); }}>Sign out</button></div></div></div></aside>
+      <div className="user-row"><div className="avatar placeholder"><div>{session.user?.name.slice(0, 2).toUpperCase()}</div></div><div><p>{session.user?.name}</p><button disabled={session.demo || busy} onClick={signOut}>Sign out</button></div></div></div></aside>
     <div className="workspace">{session.demo && <div className="demo-banner"><strong>Local preview</strong> · Sample servers and cases. No Discord or Jev connection.</div>}
       <header className="topbar"><div>{guild?.name ?? 'Server'} <span>/</span> <strong>{navigation.find(item => item.view === view)?.label}</strong></div>{data && <span className={`badge badge-sm ${data.settings.mode === 'protect' ? 'badge-success badge-soft' : data.settings.mode === 'monitor' ? 'badge-warning badge-soft' : 'badge-outline'}`}>{({ monitor: 'Monitoring', protect: 'Protection enabled', off: 'Moderation paused' })[data.settings.mode]}</span>}</header>
       <main id="main" className="content">{!guild?.installed ? <section className="empty"><h1>Add Jev-Mod to this server</h1><p>Install the bot, then refresh to configure moderation.</p>{guild?.inviteUrl && <a className="btn btn-primary" href={guild.inviteUrl}>Add to Discord</a>}<button className="btn" onClick={() => location.reload()}>Refresh servers</button></section>

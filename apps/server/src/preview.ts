@@ -1,13 +1,12 @@
 import { createStore } from '@jev-mod/db/index.ts';
 import { createDashboard, type BotApi } from './app.ts';
-import { defaultSettings } from '@jev-mod/core/policy.ts';
 
 const guilds = [{ id: '100000000000000001', name: 'The Commons', installed: true },
   { id: '100000000000000002', name: 'Developer Lounge', installed: true }];
 const previewBot: BotApi = {
   async authorize(guild) { if (!guilds.some(item => item.id === guild)) throw Object.assign(new Error('Access denied.'), { status: 403 }); },
   async metadata(id) { return { ...guilds.find(item => item.id === id)!,
-    channels: [{ id: '200000000000000001', name: 'general' }, { id: '200000000000000002', name: 'mod-log' }, { id: '200000000000000003', name: 'off-topic' }],
+    channels: [{ id: '200000000000000001', name: 'general', sendable: true }, { id: '200000000000000002', name: 'mod-log', sendable: true }, { id: '200000000000000003', name: 'off-topic', sendable: true }],
     roles: [{ id: '300000000000000001', name: 'Moderators' }, { id: '300000000000000002', name: 'Members' }],
     permissions: { manageMessages: true, moderateMembers: true } }; },
   async validateSettings() {},
