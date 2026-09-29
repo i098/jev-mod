@@ -45,18 +45,19 @@ function Root() {
   if (installationCancelled) return <main className="login"><Brand /><h1>Installation wasn’t completed</h1><p>Try again, or return to your dashboard.</p>
     {data.session.inviteUrl && <a className="btn btn-primary" href={data.session.inviteUrl}>Try again</a>}
     <a className="btn btn-ghost" href="/">Back to dashboard</a></main>;
-  if (!data.session.user) return <Login inviteUrl={data.session.inviteUrl} />;
+  if (!data.session.user) return <Login />;
   return <AppContext.Provider value={data}><Outlet /></AppContext.Provider>;
 }
-function Login({ inviteUrl }: { inviteUrl: string | null }) {
+function Login() {
   const [error, setError] = useState('');
   return <main className="login"><Brand /><h1>Discord moderation.<br />Powered by Jev.</h1>
     <button className="btn btn-primary" onClick={async () => {
       const result = await authClient.signIn.social({ provider: 'discord', callbackURL: location.origin });
       if (result.error) setError(result.error.message ?? 'Sign-in failed.');
-    }}>Continue with Discord</button>{inviteUrl && <a className="btn btn-ghost" href={inviteUrl}>Add to Discord</a>}
+    }}>Continue with Discord</button>
     {error && <p role="alert" className="error">{error}</p>}
-    <p className="fine">Manage Server permission is required. Message text is sent to TypeSafe for evaluation. Flagged evidence is kept for 30 days.</p></main>;
+    <p className="fine">Manage Server permission is required. Message text is sent to TypeSafe for evaluation. Flagged evidence is kept for 30 days.<br />
+      <a href="https://jevmod.us/terms/">Terms of Service</a> · <a href="https://jevmod.us/privacy/">Privacy Policy</a></p></main>;
 }
 function Index() {
   const { guilds, session } = useApp();

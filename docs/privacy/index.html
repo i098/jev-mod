@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Privacy Policy · Jev-Mod</title>
+  <meta name="description" content="How Jev-Mod processes Discord data, uses TypeSafe Jev, stores moderation evidence, and handles privacy requests.">
+  <link rel="canonical" href="https://jevmod.us/privacy/">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to privacy policy</a>
+  <header><a class="brand" href="/">jev·mod</a><nav aria-label="Legal navigation"><a href="/terms/">Terms of Service</a><a href="https://app.jevmod.us">Dashboard</a></nav></header>
+  <main id="main"><article>
+    <h1>Privacy Policy</h1>
+    <p class="date">Effective September 29, 2026</p>
+    <p><strong>42nights Inc.</strong>, Sugar Land, Texas, United States, operates the hosted Jev-Mod service at jevmod.us and app.jevmod.us. Privacy contact: <a href="mailto:dev@42nights.inc">dev@42nights.inc</a>.</p>
+    <p>This policy covers our website, dashboard, and shared Discord bot. Independently self-hosted copies are controlled by their own operators; contact that operator about their deployment.</p>
+    <h2>1. Information we process</h2>
+    <ul>
+      <li><strong>Discord sign-in:</strong> Discord user ID, display name, avatar, email where provided, authorization scopes, encrypted OAuth credentials, and session information. Authentication records may include IP address and browser information.</li>
+      <li><strong>Server configuration:</strong> server, channel, and role identifiers; permission and membership information; moderation rules; exceptions; and administrator changes.</li>
+      <li><strong>Message processing:</strong> authorized server message text and edits, message and author identifiers, and rule instructions. Matching messages can become moderation cases containing text, scores, actions, timestamps, and review records.</li>
+      <li><strong>API keys:</strong> TypeSafe keys supplied by server administrators are stored encrypted and used for that server’s requests. Saved plaintext keys are not returned by the dashboard.</li>
+      <li><strong>Operations and support:</strong> connection and security information, rate-limit records, service errors, and information you send to our support address. Infrastructure providers also process technical request data.</li>
+    </ul>
+    <p>The bot does not monitor direct messages or scan attachment contents. Text you manually submit to the message tester is processed on demand and is not added to moderation case history by the tester.</p>
+    <h2>2. Why we use it</h2>
+    <ul>
+      <li>Authenticate users and verify current authority to manage a server.</li>
+      <li>Apply configured moderation rules, record outcomes, and support moderator review.</li>
+      <li>Protect the service, enforce usage limits, diagnose failures, answer requests, and meet legal obligations.</li>
+    </ul>
+    <p>We do not sell personal information or use it for targeted advertising. Jev-Mod does not include advertising trackers.</p>
+    <h2>3. Jev and other providers</h2>
+    <ul>
+      <li><strong>TypeSafe:</strong> enabled Jev rules send message text and rule instructions to TypeSafe for evaluation. This also applies to manual message tests with Jev rules enabled. TypeSafe’s processing is governed by its <a href="https://typesafe.ai/legal/privacy-policy">privacy policy</a> and your applicable provider terms.</li>
+      <li><strong>Discord:</strong> provides authentication, server metadata, messages, and moderation actions under its <a href="https://discord.com/privacy">privacy policy</a>. Actions and related records may also remain within Discord.</li>
+      <li><strong>Cloudflare:</strong> hosts the public service, database, and bot infrastructure and processes service data and technical requests under its <a href="https://www.cloudflare.com/privacypolicy/">privacy policy</a>.</li>
+      <li><strong>Authorized server managers:</strong> can access that server’s configuration and recorded moderation cases. We may also disclose information when legally required or reasonably necessary to protect security and rights.</li>
+    </ul>
+    <p>Jev-Mod does not currently collect payment-card details. If paid features are introduced, the applicable checkout will identify payment processing and any additional data handling before purchase.</p>
+    <h2>4. Retention</h2>
+    <ul>
+      <li><strong>Moderation cases and settings history:</strong> scheduled cleanup removes records older than 30 days.</li>
+      <li><strong>Server settings and keys:</strong> retained while needed for the server. Replacing or removing a key removes its previous stored value. Removing the bot triggers deletion of that server’s records; removals during downtime are reconciled when the bot starts again.</li>
+      <li><strong>Accounts and OAuth credentials:</strong> retained for account access until deleted following an applicable request. Revoking authorization in Discord stops authorized access but does not itself guarantee deletion of records already held by Jev-Mod.</li>
+      <li><strong>Sessions and temporary state:</strong> sign-in sessions are configured for one hour; expired sessions and OAuth state are removed by scheduled cleanup. Rate-limit records are short-lived.</li>
+      <li><strong>Support, security, and backups:</strong> retention depends on the purpose, applicable legal requirements, and provider backup or log retention. Deleted active records may remain temporarily in provider-managed backups.</li>
+    </ul>
+    <p>Removing server records does not automatically delete a person’s separate dashboard account or records held independently by Discord or TypeSafe.</p>
+    <h2>5. Cookies and security</h2>
+    <p>The dashboard uses necessary cookies for sign-in sessions and OAuth request verification. Hosting services may use security technologies. We do not use optional advertising cookies.</p>
+    <p>We use HTTPS, access checks, and encryption for stored API keys and OAuth credentials. No transmission or storage system is completely secure.</p>
+    <h2>6. Your choices and requests</h2>
+    <ul>
+      <li>Server managers can pause automatic moderation, change rules and exceptions, disable all Jev rules for deterministic-only checks, or remove the bot.</li>
+      <li>Removing a server key may fall back to an operator key if one is configured. Disable Jev rules to stop AI checks; pausing automatic moderation does not prevent a user from submitting a manual message test.</li>
+      <li>You can revoke Jev-Mod authorization in Discord and contact us to request access, correction, deletion, or an export of personal information. Other rights, including objection or restriction, may apply depending on your location.</li>
+    </ul>
+    <p>Email <a href="mailto:dev@42nights.inc">dev@42nights.inc</a> with your request and relevant Discord user or server ID if known. Do not send passwords or API keys. We may request proportionate identity or authority verification and will respond under applicable legal requirements.</p>
+    <p>To appeal a denied privacy request, email the same address with the subject “Privacy appeal.” We will explain our decision and applicable complaint options. Texas residents may contact the <a href="https://www.texasattorneygeneral.gov/consumer-protection/file-consumer-complaint/consumer-privacy-rights">Texas Attorney General</a>; other users may contact their relevant privacy regulator. We do not discriminate against people for exercising applicable privacy rights.</p>
+    <h2>7. International processing and children</h2>
+    <p>Information may be processed in the United States and other countries where our providers operate. Applicable protections and provider terms govern those transfers.</p>
+    <p>Jev-Mod is not directed to children under 13 or anyone below Discord’s applicable minimum age. Contact us if you believe a child’s information has been improperly collected so we can investigate and address it.</p>
+    <h2>8. Changes and contact</h2>
+    <p>We will update this page and its effective date when our practices change, with additional notice where required. Contact <a href="mailto:dev@42nights.inc">dev@42nights.inc</a> for privacy questions.</p>
+  </article></main>
+  <footer><nav aria-label="Footer"><a href="/">Home</a><a href="/terms/">Terms of Service</a><a href="mailto:dev@42nights.inc">Contact</a></nav><p>42nights Inc. · Sugar Land, Texas, United States</p></footer>
+</body>
+</html>
