@@ -1,3 +1,4 @@
+agent: codex
 commands:
   prepare: "pnpm install --frozen-lockfile"
   test: "pnpm test"
