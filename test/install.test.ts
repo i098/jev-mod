@@ -17,8 +17,23 @@ test('installation uses Better Auth state and returns to a fixed dashboard callb
   const unexpected = async (): Promise<never> => { throw Error('Installation initiation must not call the bot'); };
   const bot: BotApi = { authorize: unexpected, metadata: unexpected, validateSettings: unexpected, enforce: unexpected, health: unexpected };
   const services = createServices(env, createStore(database.db), bot, () => 'test');
-  const app = createDashboard(services);
-  const request = (path: string, init?: RequestInit) => app.request(env.PUBLIC_URL + path, init);
+  let authResponse: Response;
+  const app = createDashboard({ ...services, auth: async request => {
+    const response = await services.auth(request);
+    authResponse = response.clone();
+    return response;
+  } });
+  const request = async (path: string, init?: RequestInit) => {
+    const response = await app.request(env.PUBLIC_URL + path, init);
+    if (path.startsWith('/api/auth/')) {
+      assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.equal(response.status, authResponse.status);
+      assert.equal(response.statusText, authResponse.statusText);
+      assert.deepEqual(response.headers.getSetCookie(), authResponse.headers.getSetCookie());
+      assert.equal(await response.clone().text(), await authResponse.text());
+    }
+    return response;
+  };
   const guild = '200000000000000001';
   const response = await request(`/api/install?guild_id=${guild}`);
   assert.equal(response.status, 302);
@@ -75,6 +90,9 @@ test('installation uses Better Auth state and returns to a fixed dashboard callb
   assert.equal(completed.status, 302);
   assert.equal(completed.headers.get('location'), `${env.PUBLIC_URL}/servers/${guild}/rules?installed=1`);
   assert.ok(completed.headers.getSetCookie().some(value => value.includes('session_token=')));
+  const sessionCookie = completed.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+  const session = await request('/api/auth/get-session', { headers: { cookie: sessionCookie } });
+  assert.equal((await session.json() as { user: { name: string } }).user.name, 'Synthetic moderator');
   assert.equal(providerCalls, 2);
   const replay = await request(callback, { headers: { cookie: installCookie } });
   assert.notEqual(replay.headers.get('location'), completed.headers.get('location'));

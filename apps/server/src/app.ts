@@ -49,6 +49,7 @@ export function createDashboard(services: Services) {
     const key = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
     if (!await store.consumeBudget(`http:${key}`, 180)) return c.json({ error: 'Too many requests. Try again in a minute.' }, 429);
     await next();
+    c.header('Cache-Control', 'no-store');
   });
   const publicAuth = new Set(['/api/auth/get-session', '/api/auth/sign-in/social', '/api/auth/sign-out',
     '/api/auth/callback/discord', '/api/auth/error', '/api/auth/ok']);
