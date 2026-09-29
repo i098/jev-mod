@@ -3,7 +3,15 @@ node_modules/
 .env.*
 !.env.example
 data/
+backups/
 coverage/
 .DS_Store
 .lavish/
 artifacts/
+.wrangler/
+dist/
+**/dist/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.alchemy/

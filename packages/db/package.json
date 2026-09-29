@@ -1,0 +1,5 @@
+{
+  "name": "@jev-mod/db", "private": true, "type": "module",
+  "exports": { "./*": "./src/*" },
+  "dependencies": { "@jev-mod/core": "workspace:*", "drizzle-orm": "0.45.3" }
+}

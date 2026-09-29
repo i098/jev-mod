@@ -1,0 +1,17 @@
+.git
+data
+backups
+.fallow
+.no-mistakes*
+.codegraph
+.tokensave
+node_modules
+**/node_modules
+.env
+.env.*
+.dev.vars*
+.wrangler
+.alchemy
+artifacts
+.lavish
+**/dist

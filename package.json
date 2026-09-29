@@ -1,0 +1,37 @@
+{
+  "name": "jev-mod",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=26.7.0"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "pnpm": { "overrides": { "@esbuild-kit/core-utils>esbuild": "0.25.12" } },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "pnpm --filter @jev-mod/web dev",
+    "dev:api": "wrangler dev --config wrangler.preview.jsonc --port 7102",
+    "dev:setup": "wrangler d1 migrations apply DB --local --config wrangler.preview.jsonc",
+    "build": "pnpm --filter @jev-mod/web build",
+    "check": "tsc --noEmit && pnpm build && wrangler deploy --dry-run --outdir artifacts/worker",
+    "test": "tsx --test test/*.test.js test/*.test.ts",
+    "db:generate": "drizzle-kit generate --config packages/db/drizzle.config.ts",
+    "deploy": "pnpm build && wrangler deploy",
+    "bot": "node apps/bot/src/index.ts",
+    "server": "node apps/server/src/node.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260906.1",
+    "@types/node": "^26.4.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "discord.js": "14.27.0",
+    "drizzle-kit": "0.31.11",
+    "miniflare": "4.20260730.0",
+    "tsx": "4.23.15",
+    "typescript": "^6.0.3",
+    "wrangler": "4.143.0"
+  }
+}
