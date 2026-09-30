@@ -125,8 +125,9 @@ legend { font-size: 12px; margin-bottom: 10px; }
 .settings-tabs { display: flex; flex-wrap: wrap; margin-bottom: 16px; border-bottom: 1px solid var(--line); gap: 4px; }
 .settings-tabs .tab { color: var(--secondary); border-bottom: 2px solid transparent; padding: 12px 16px; height: auto; }
 .settings-tabs .tab-active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
-.settings-help { display: flex; justify-content: flex-end; margin-bottom: 8px; }
-.exceptions legend { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; }
+.exceptions legend { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.exceptions > .field { margin-top: 12px; }
+.exceptions .field .input { width: 100%; }
 .selected-options { padding: 0; margin: 12px 0; list-style: none; max-height: 180px; overflow-y: auto; }
 .selected-options li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
 .selected-options li > span { min-width: 0; overflow-wrap: anywhere; }
