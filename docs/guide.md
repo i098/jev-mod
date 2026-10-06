@@ -25,7 +25,7 @@ For the separate landing page, see [website deployment](../README.md#website-dep
 Use Node.js 26.7 or later and pnpm 10.33.2.
 
 ```sh
-git clone https://github.com/undeemed/jev-mod.git
+git clone https://github.com/i098/jev-mod.git
 cd jev-mod
 pnpm install --frozen-lockfile
 pnpm dev:setup
